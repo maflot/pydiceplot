@@ -1,0 +1,4 @@
+setuptools~=65.5.0
+pandas~=2.2.2
+numpy~=1.23.5
+scipy~=1.11.2
