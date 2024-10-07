@@ -1,7 +1,6 @@
 *.xlsx
 *.uuid
 **/.ipynb_checkpoints/**
-*~
 .idea/
 resources/
 __pycache__/
@@ -31,7 +30,6 @@ cmake-build-debug/
 *.lot
 
 *.dvi
-*.txt
 *.mp4
 
 *.bib$
