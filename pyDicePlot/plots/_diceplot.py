@@ -292,7 +292,7 @@ if __name__ == "__main__":
         cat_b="Pathway",
         cat_c="PathologyVariable",
         group="Group",
-        plot_path="./",
+        plot_path="../",
         output_str="dummy_dice_plot",
         switch_axis=False,
         group_alpha=0.6,
