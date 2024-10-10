@@ -4,9 +4,6 @@ import numpy as np
 import plotly.graph_objects as go
 import warnings
 from utils import create_var_positions, perform_clustering, order_cat_b, prepare_plot_data, prepare_box_data
-from scipy.spatial.distance import pdist
-from scipy.cluster.hierarchy import linkage, dendrogram
-
 def dice_plot(data,
               cat_a,
               cat_b,
