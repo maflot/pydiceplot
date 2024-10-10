@@ -7,7 +7,7 @@ from pydiceplot.plots._diceplot import dice_plot  # Import the dice_plot functio
 import warnings
 
 # Set plot path
-plot_path = "../sample_plots"
+plot_path = "../images"
 
 # Ensure the plot_path directory exists
 if not os.path.exists(plot_path):

@@ -22,8 +22,8 @@ for using dice plots in R please refer to [DicePlot](https://github.com/maflot/D
 
 ## Sample Output
 
-![Sample Dice with 3 categories Plot](./sample_plots/dice_plot_3_example_dice_plot.png)
-![Sample Dice with 6 categories Plot](./sample_plots/dice_plot_5_example_dice_plot.png)
+![Sample Dice with 3 categories Plot](images/dice_plot_3_example_dice_plot.png)
+![Sample Dice with 6 categories Plot](images/dice_plot_5_example_dice_plot.png)
 
 *Figure: A sample dice plot generated using the `DicePlot` package.*
 
