@@ -3,3 +3,4 @@ numpy
 plotly
 warnings-plugin
 scipy
+kaleido
