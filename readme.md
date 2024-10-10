@@ -29,7 +29,7 @@ for using dice plots in R please refer to [DicePlot](https://github.com/maflot/D
 
 ## Documentation
 
-For full documentation and additional examples, please refer to the docpages [TODO]
+For full documentation and additional examples, please refer to the [documentation](https://dice-and-domino-plot.readthedocs.io/en/latest/index.html#)
 ## Features
 
 - **Visualize Complex Data:** Easily create plots for datasets with multiple categorical variables.
