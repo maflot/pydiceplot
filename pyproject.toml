@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyDicePlot"
+version = "0.0"
+description = "Plot multidimensional categorical data"
+authors = [
+    { name = "Matthias Flotho", email = "Matthias.Flotho@ccb.uni-saarland.de" },
+    { name = "Philipp Flotho", email = "Philipp.Flotho@uni-saarland.de" }
+]
+license = { text = "MIT" }
+urls = { "Homepage" = "https://maflot.github.io/pyDicePlot/" }
+
+packages = ["pyDicePlot"]
+
+dependencies = [
+    "matplotlib>=3.1",
+    "pandas>=1.3"
+]
