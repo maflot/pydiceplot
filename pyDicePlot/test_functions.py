@@ -7,7 +7,7 @@ from diceplot import dice_plot  # Import the dice_plot function from your dice_p
 import warnings
 
 # Set plot path
-plot_path = "sample_plots"
+plot_path = "../sample_plots"
 
 # Ensure the plot_path directory exists
 if not os.path.exists(plot_path):
