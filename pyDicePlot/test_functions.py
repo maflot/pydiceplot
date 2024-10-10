@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 import os
-from diceplot import dice_plot  # Import the dice_plot function from your dice_plot.py
+from .plots._diceplot import dice_plot  # Import the dice_plot function from your dice_plot.py
 import warnings
 
 # Set plot path
