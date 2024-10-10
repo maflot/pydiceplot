@@ -5,8 +5,8 @@ The **pyDicePlot** package allows you to create visualizations (dice plots) for 
 ## Requirements
 This code requires python 3.
 ```bash
-conda create --name pyDicePlot python=3
-conda activate pyDicePlot
+conda create --name pydiceplot python=3
+conda activate pydiceplot
 pip install -r requirements.txt
 ```
 

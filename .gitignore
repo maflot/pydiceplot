@@ -39,3 +39,5 @@ cmake-build-debug/
 *.out.ps
 *.pag
 *.brf
+/build/
+/pyDicePlot.egg-info/

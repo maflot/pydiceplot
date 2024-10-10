@@ -11,7 +11,7 @@ authors = [
     { name = "Philipp Flotho", email = "Philipp.Flotho@uni-saarland.de" }
 ]
 license = { text = "MIT" }
-urls = { "Homepage" = "https://maflot.github.io/pyDicePlot/" }
+urls = { "Homepage" = "https://dice-and-domino-plot.readthedocs.io/en/latest/" }
 
 dependencies = [
     "pandas>=1.0",
