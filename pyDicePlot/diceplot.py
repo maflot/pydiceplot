@@ -223,9 +223,6 @@ def dice_plot(data,
 
 if __name__ == "__main__":
     # main.py
-    import pandas as pd
-    import numpy as np
-    from dice_plot import dice_plot
 
     # Define the pathology variables and their colors
     pathology_variables = ["Amyloid", "NFT", "Tangles", "Plaq N"]
