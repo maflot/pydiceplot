@@ -4,6 +4,16 @@ from .backends._plotly_backend import plot_with_plotly
 from .backends._matplotlib_backend import plot_with_matplotlib
 
 
+_backends = ["plotly", "matplotlib"]
+_backend = "plotly"
+
+
+def set_backend(backend: str):
+    assert backend in _backends, f"Backend '{backend}' is not available. Choose from {_backends}."
+    global _backend
+    _backend = backend
+
+
 def plot(plot_type, data, backend="plotly", **kwargs):
     """Plots a dice or domino plot.
 
