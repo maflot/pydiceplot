@@ -40,3 +40,4 @@ cmake-build-debug/
 *.pag
 *.brf
 /build/
+/pyDicePlot.egg-info/
