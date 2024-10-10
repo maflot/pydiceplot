@@ -18,7 +18,7 @@ pip install -e .
 from the base directory.
 
 ## Use the dice plots in R
-for using dice plots in R please refer to [pyDicePlot](https://github.com/maflot/DicePlot/tree/main)
+for using dice plots in R please refer to [DicePlot](https://github.com/maflot/DicePlot/tree/main)
 
 ## Sample Output
 
