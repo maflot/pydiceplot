@@ -1,49 +1,60 @@
-# dice_plot.py
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import os
 import warnings
-from utils import create_var_positions, perform_clustering, order_cat_b, prepare_plot_data, prepare_box_data
+from _utils import (
+    prepare_data,
+    perform_clustering,
+    calculate_var_positions,
+    create_binary_matrix,
+    generate_plot_dimensions,
+    add_rectangles_to_plot,
+    add_scatter_traces,
+    save_plot
+)
+
+
 def dice_plot(data,
               cat_a,
               cat_b,
               cat_c,
               group,
-              plot_path="./", output_str="",
+              plot_path="./",
+              output_str="dice_plot",
               switch_axis=False,
               group_alpha=0.6,
               title=None,
               cat_c_colors=None,
               group_colors=None,
-              format=".pdf",
-              custom_theme=None):
-    # Set default colors if not provided
-    if group_colors is None:
-        group_colors = {
-            "BBB-linked": "#333333",
-            "Cell-proliferation": "#888888",
-            "Other": "#DDDDDD"
-        }
+              formats=[".html", ".png"],  # Modified to accept multiple formats
+              max_dice_sides=6):
+    """
+    Generates a dice plot visualization based on the provided data.
 
-    if cat_c_colors is None:
-        default_cat_c_colors = {
-            "Var1": "#d5cccd",
-            "Var2": "#cb9992",
-            "Var3": "#ad310f",
-            "Var4": "#7e2a20",
-            "Var5": "#FFD700",
-            "Var6": "#FF6622"
-        }
-        cat_c_colors = default_cat_c_colors
+    Parameters:
+    - data: DataFrame containing the necessary variables.
+    - cat_a: Name of the category A variable (e.g., 'CellType').
+    - cat_b: Name of the category B variable (e.g., 'Pathway').
+    - cat_c: Name of the category C variable (e.g., 'PathologyVariable').
+    - group: Name of the grouping variable (e.g., 'Group').
+    - plot_path: Path to save the plot.
+    - output_str: Output string for the filename.
+    - switch_axis: Whether to switch the axes.
+    - group_alpha: Transparency level for group rectangles.
+    - title: Plot title.
+    - cat_c_colors: Dictionary of colors for cat_c variables.
+    - group_colors: Dictionary of colors for group variables.
+    - formats: List of file formats for saving the plot (e.g., ['.html', '.png']).
+    - max_dice_sides: Maximum number of dice sides (1-6).
 
-    num_unique_cat_c = len(data[cat_c].unique())
-    if num_unique_cat_c not in [3, 4, 5, 6]:
-        raise ValueError("Unsupported number of categories for cat_c. Must be 3, 4, 5, or 6.")
-
-    # Ensure consistent ordering of factors
-    data[cat_a] = pd.Categorical(data[cat_a], categories=data[cat_a].unique(), ordered=True)
-    data[cat_b] = pd.Categorical(data[cat_b], categories=data[cat_b].unique(), ordered=True)
-    data[cat_c] = pd.Categorical(data[cat_c], categories=list(cat_c_colors.keys()), ordered=True)
+    Returns:
+    - fig: Plotly Figure object.
+    """
+    # Prepare data and ensure consistent ordering
+    data, cat_a_order, cat_b_order = prepare_data(
+        data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors
+    )
 
     # Check for unique group per cat_b
     group_check = data.groupby(cat_b)[group].nunique().reset_index()
@@ -53,145 +64,47 @@ def dice_plot(data,
             ', '.join(group_check[cat_b].tolist())
         ))
 
-    # Ensure group is a factor with levels matching group_colors
-    data[group] = pd.Categorical(data[group], categories=list(group_colors.keys()), ordered=True)
+    # Calculate variable positions for dice sides
+    var_positions = calculate_var_positions(cat_c_colors, max_dice_sides)
 
-    # Define variable positions for the mini plots
-    var_positions = create_var_positions(cat_c_colors, num_unique_cat_c)
-
-    # Perform hierarchical clustering
+    # Perform hierarchical clustering to order cat_a
     cat_a_order = perform_clustering(data, cat_a, cat_b, cat_c)
+    data[cat_a] = pd.Categorical(data[cat_a], categories=cat_a_order, ordered=True)
 
-    # Order cat_b based on group and frequency
-    cat_b_order = order_cat_b(data, group, cat_b, group_colors)
+    # Update plot_data
+    plot_data = data.merge(var_positions, left_on=cat_c, right_on='var', how='left')
+    plot_data = plot_data.dropna(subset=['x_offset', 'y_offset'])
+    plot_data['x_num'] = plot_data[cat_a].cat.codes + 1
+    plot_data['y_num'] = plot_data[cat_b].cat.codes + 1
+    plot_data['x_pos'] = plot_data['x_num'] + plot_data['x_offset']
+    plot_data['y_pos'] = plot_data['y_num'] + plot_data['y_offset']
+    plot_data = plot_data.sort_values(by=[cat_a, group, cat_b])
 
-    # Prepare plot data
-    plot_data = prepare_plot_data(data, cat_a, cat_b, cat_c, group, var_positions, cat_a_order, cat_b_order)
-
-    # Prepare box data
-    box_data = prepare_box_data(data, cat_a, cat_b, group, cat_a_order, cat_b_order)
+    # Prepare box_data
+    box_data = data[[cat_a, cat_b, group]].drop_duplicates()
+    box_data['x_num'] = box_data[cat_a].cat.codes + 1
+    box_data['y_num'] = box_data[cat_b].cat.codes + 1
+    box_data['x_min'] = box_data['x_num'] - 0.4
+    box_data['x_max'] = box_data['x_num'] + 0.4
+    box_data['y_min'] = box_data['y_num'] - 0.4
+    box_data['y_max'] = box_data['y_num'] + 0.4
+    box_data = box_data.sort_values(by=[cat_a, group, cat_b])
 
     # Create the figure
     fig = go.Figure()
 
     # Add rectangles for the boxes
-    for idx, row in box_data.iterrows():
-        fig.add_shape(
-            type="rect",
-            x0=row['x_min'], x1=row['x_max'],
-            y0=row['y_min'], y1=row['y_max'],
-            line=dict(color="grey", width=0.5),
-            fillcolor=group_colors[row[group]],
-            opacity=group_alpha,
-            layer="below"
-        )
+    add_rectangles_to_plot(fig, box_data, group, group_colors, group_alpha)
 
     # Add scatter traces for the PathologyVariables
-    for var in var_positions['var']:
-        var_data = plot_data[plot_data[cat_c] == var]
-        fig.add_trace(go.Scatter(
-            x=var_data['x_pos'],
-            y=var_data['y_pos'],
-            mode='markers',
-            marker=dict(
-                size=10,
-                color=cat_c_colors[str(var)],
-                line=dict(width=1, color='black')
-            ),
-            name=str(var),
-            legendgroup=str(var),
-            showlegend=False  # Will create custom legend
-        ))
-
-    # Add custom legend entries for cat_c
-    legend_entries = []
-    for idx, row in var_positions.iterrows():
-        legend_entries.append(go.Scatter(
-            x=[None],
-            y=[None],
-            mode='markers',
-            marker=dict(
-                size=10,
-                color=cat_c_colors[str(row['var'])],
-                line=dict(width=1, color='black')
-            ),
-            legendgroup=str(row['var']),
-            showlegend=True,
-            name=str(row['var'])
-        ))
-    fig.add_traces(legend_entries)
-
-    # Add group legend entries
-    for g in group_colors.keys():
-        fig.add_trace(go.Scatter(
-            x=[None],
-            y=[None],
-            mode='markers',
-            marker=dict(
-                size=10,
-                color=group_colors[g],
-                opacity=group_alpha
-            ),
-            legendgroup=g,
-            showlegend=True,
-            name=g
-        ))
-
-    # Set axes
-    x_tickvals = list(range(1, len(cat_a_order)+1))
-    x_ticktext = cat_a_order
-    y_tickvals = list(range(1, len(cat_b_order)+1))
-    y_ticktext = cat_b_order
-
-    fig.update_xaxes(
-        tickvals=x_tickvals,
-        ticktext=x_ticktext,
-        tickangle=45,
-        tickmode='array',
-        title_text='',
-        showgrid=False,
-        zeroline=False,
-        range=[0.5, len(x_tickvals)+0.5]
-    )
-
-    fig.update_yaxes(
-        tickvals=y_tickvals,
-        ticktext=y_ticktext,
-        tickmode='array',
-        title_text='',
-        showgrid=False,
-        zeroline=False,
-        range=[0.5, len(y_tickvals)+0.5],
-        scaleanchor="x",
-        scaleratio=1
-    )
+    add_scatter_traces(fig, plot_data, cat_c, cat_c_colors)
 
     # Calculate dynamic width and height to make boxes square
-    box_size = 50  # pixels per box
-    n_x = len(x_tickvals)
-    n_y = len(y_tickvals)
-    margin_l = 150
-    margin_r = 300
-    margin_t = 100
-    margin_b = 200
-    plot_width = box_size * n_x + margin_l + margin_r
-    plot_height = box_size * n_y + margin_t + margin_b
+    plot_width, plot_height, margins = generate_plot_dimensions(len(cat_a_order), len(cat_b_order))
 
     # Set layout
     fig.update_layout(
         plot_bgcolor='white',
-        xaxis=dict(
-            showline=False,
-            zeroline=False,
-            showgrid=False,
-        ),
-        yaxis=dict(
-            showline=False,
-            zeroline=False,
-            showgrid=False,
-            scaleanchor="x",
-            scaleratio=1
-        ),
         title=title,
         legend=dict(
             orientation='v',
@@ -200,101 +113,164 @@ def dice_plot(data,
             xanchor='left',
             x=1.05
         ),
-        margin=dict(l=margin_l, r=margin_r, t=margin_t, b=margin_b),
+        margin=margins,
         width=plot_width,
         height=plot_height
     )
 
-    if switch_axis:
-        fig.update_layout(yaxis_side='right')
-
-    # Save the plot
-    if format == ".html":
-        fig.write_html(f"{plot_path}/{output_str}_dice_plot.html")
-    else:
-        fig.write_image(f"{plot_path}/{output_str}_dice_plot{format}")
+    # Save the plot in specified formats
+    save_plot(fig, plot_path, output_str, formats)
 
     return fig
 
 
-
+# Adapted Main Function with Multiple Examples
 if __name__ == "__main__":
-    # main.py
-
-    # Define the pathology variables and their colors
-    pathology_variables = ["Amyloid", "NFT", "Tangles", "Plaq N"]
-    cat_c_colors = {
-        "Amyloid": "#d5cccd",
-        "NFT": "#cb9992",
-        "Tangles": "#ad310f",
-        "Plaq N": "#7e2a20"
-    }
+    plot_path = "./plots"
 
     # Define cell types (cat_a)
     cell_types = ["Neuron", "Astrocyte", "Microglia", "Oligodendrocyte", "Endothelial"]
 
-    # Define pathways (cat_b) and add more to make a total of 15
-    pathways = [
+    # Define pathways (cat_b) and groups
+    pathways_initial = [
         "Apoptosis", "Inflammation", "Metabolism", "Signal Transduction", "Synaptic Transmission",
-        "Cell Cycle", "DNA Repair", "Protein Synthesis", "Lipid Metabolism", "Neurotransmitter Release",
+        "Cell Cycle", "DNA Repair", "Protein Synthesis", "Lipid Metabolism", "Neurotransmitter Release"
+    ]
+
+    # Extend pathways to 15 for higher examples
+    pathways_extended = pathways_initial + [
         "Oxidative Stress", "Energy Production", "Calcium Signaling", "Synaptic Plasticity", "Immune Response"
     ]
 
-    # Assign groups to pathways (ensuring each pathway has only one group)
-    pathway_groups = pd.DataFrame({
-        "Pathway": pathways,
-        "Group": [
-            "BBB-linked", "Cell-proliferation", "Other", "BBB-linked", "Cell-proliferation",
-            "Cell-proliferation", "Other", "Other", "Other", "BBB-linked",
-            "Other", "Other", "BBB-linked", "Cell-proliferation", "Other"
-        ]
-    })
 
-    # Update group colors to shades of greys
-    group_colors = {
-        "BBB-linked": "#333333",
-        "Cell-proliferation": "#888888",
-        "Other": "#DDDDDD"
+    # Function to create and save dice plots
+    def create_and_save_dice_plot(num_vars, pathology_vars, cat_c_colors, output_str, title):
+        # Assign groups to pathways
+        # Ensure that each pathway has only one group
+        pathway_groups = pd.DataFrame({
+            "Pathway": pathways_extended[:15],  # Ensure 15 pathways
+            "Group": [
+                "Linked", "UnLinked", "Other", "Linked", "UnLinked",
+                "UnLinked", "Other", "Other", "Other", "Linked",
+                "Other", "Other", "Linked", "UnLinked", "Other"
+            ]
+        })
+
+        # Define group colors
+        group_colors = {
+            "Linked": "#333333",
+            "UnLinked": "#888888",
+            "Other": "#DDDDDD"
+        }
+
+        # Create dummy data
+        np.random.seed(123)
+        data = pd.DataFrame([(ct, pw) for ct in cell_types for pw in pathways_extended[:15]],
+                            columns=["CellType", "Pathway"])
+
+        # Assign random pathology variables to each combination
+        data_list = []
+        for idx, row in data.iterrows():
+            variables = np.random.choice(pathology_vars, size=np.random.randint(1, num_vars + 1), replace=False)
+            for var in variables:
+                data_list.append({
+                    "CellType": row["CellType"],
+                    "Pathway": row["Pathway"],
+                    "PathologyVariable": var
+                })
+
+        # Create DataFrame from data_list
+        data_expanded = pd.DataFrame(data_list)
+
+        # Merge the group assignments into the data
+        data_expanded = data_expanded.merge(pathway_groups, left_on="Pathway", right_on="Pathway", how="left")
+
+        # Use the dice_plot function
+        fig = dice_plot(
+            data=data_expanded,
+            cat_a="CellType",
+            cat_b="Pathway",
+            cat_c="PathologyVariable",
+            group="Group",
+            plot_path=plot_path,
+            output_str=output_str,
+            switch_axis=False,
+            group_alpha=0.6,
+            title=title,
+            cat_c_colors=cat_c_colors,
+            group_colors=group_colors,
+            formats=[".html", ".png"],  # Save as both HTML and PNG
+            max_dice_sides=6  # Adjust if needed
+        )
+
+        # Optionally display the figure
+        # fig.show()
+
+
+    # Example 1: 3 Pathology Variables
+    pathology_vars_3 = ["Stroke", "Cancer", "Flu"]
+    cat_c_colors_3 = {
+        "Stroke": "#d5cccd",
+        "Cancer": "#cb9992",
+        "Flu": "#ad310f"
     }
-
-    # Create dummy data
-    np.random.seed(123)
-    data = pd.DataFrame([(ct, pw) for ct in cell_types for pw in pathways], columns=["CellType", "Pathway"])
-
-    # Assign random pathology variables to each combination
-    data_list = []
-    for idx, row in data.iterrows():
-        n_vars = np.random.randint(1, 5)  # Random number between 1 and 4
-        variables = np.random.choice(pathology_variables, size=n_vars, replace=False)
-        for var in variables:
-            data_list.append({
-                "CellType": row["CellType"],
-                "Pathway": row["Pathway"],
-                "PathologyVariable": var
-            })
-
-    # Create DataFrame from data_list
-    data_expanded = pd.DataFrame(data_list)
-
-    # Merge the group assignments into the data
-    data_expanded = data_expanded.merge(pathway_groups, left_on="Pathway", right_on="Pathway", how="left")
-
-    # Use the dice_plot function
-    fig = dice_plot(
-        data=data_expanded,
-        cat_a="CellType",
-        cat_b="Pathway",
-        cat_c="PathologyVariable",
-        group="Group",
-        plot_path="../",
-        output_str="dummy_dice_plot",
-        switch_axis=False,
-        group_alpha=0.6,
-        title="Dummy Dice Plot with Pathology Variables",
-        cat_c_colors=cat_c_colors,
-        group_colors=group_colors,
-        format=".html"  # You can change to ".pdf" or ".png" if needed
+    create_and_save_dice_plot(
+        num_vars=3,
+        pathology_vars=pathology_vars_3,
+        cat_c_colors=cat_c_colors_3,
+        output_str="dice_plot_3_example",
+        title="Dice Plot with 3 Pathology Variables"
     )
 
-    # To display the figure in a Jupyter notebook
-    fig.show()
+    # Example 2: 4 Pathology Variables
+    pathology_vars_4 = ["Stroke", "Cancer", "Flu", "ADHD"]
+    cat_c_colors_4 = {
+        "Stroke": "#d5cccd",
+        "Cancer": "#cb9992",
+        "Flu": "#ad310f",
+        "ADHD": "#7e2a20"
+    }
+    create_and_save_dice_plot(
+        num_vars=4,
+        pathology_vars=pathology_vars_4,
+        cat_c_colors=cat_c_colors_4,
+        output_str="dice_plot_4_example",
+        title="Dice Plot with 4 Pathology Variables"
+    )
+
+    # Example 3: 5 Pathology Variables
+    pathology_vars_5 = ["Stroke", "Cancer", "Flu", "ADHD", "Lymphom"]
+    cat_c_colors_5 = {
+        "Stroke": "#d5cccd",
+        "Cancer": "#cb9992",
+        "Flu": "#ad310f",
+        "ADHD": "#7e2a20",
+        "Lymphom": "#FFD700"  # Gold color for Lymphom
+    }
+    create_and_save_dice_plot(
+        num_vars=5,
+        pathology_vars=pathology_vars_5,
+        cat_c_colors=cat_c_colors_5,
+        output_str="dice_plot_5_example",
+        title="Dice Plot with 5 Pathology Variables"
+    )
+
+    # Example 4: 6 Pathology Variables
+    pathology_vars_6 = ["Alzheimer's disease", "Cancer", "Flu", "ADHD", "Age", "Weight"]
+    cat_c_colors_6 = {
+        "Alzheimer's disease": "#d5cccd",
+        "Cancer": "#cb9992",
+        "Flu": "#ad310f",
+        "ADHD": "#7e2a20",
+        "Age": "#FFD700",  # Gold color for Age
+        "Weight": "#FF6622"  # Orange color for Weight
+    }
+    create_and_save_dice_plot(
+        num_vars=6,
+        pathology_vars=pathology_vars_6,
+        cat_c_colors=cat_c_colors_6,
+        output_str="dice_plot_6_example",
+        title="Dice Plot with 6 Pathology Variables"
+    )
+
+    print(f"All dice plots have been saved to the '{plot_path}' directory in both HTML and PNG formats.")
