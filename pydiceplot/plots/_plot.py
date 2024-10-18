@@ -1,4 +1,42 @@
-from ._backend import _backend
+from pydiceplot._backend import _backend
+
+
+class Plot:
+    def __init__(self, **kwargs):
+        self.plot_type = kwargs.get("plot_type", "dice")
+        self.data = kwargs.get("data")
+
+    def plot(self):
+        if self.plot_type == "dice":
+            return self.dice_plot()
+        elif self.plot_type == "domino":
+            return self.domino_plot()
+        else:
+            raise ValueError(f"Unknown plot type: {self.plot_type}")
+
+    def dice_plot(self):
+        pass
+
+    def domino_plot(self):
+        pass
+
+    def show(self):
+        pass
+
+    def save(self):
+        pass
+
+
+class DicePlot(Plot):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+
+class DominoPlot(Plot):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.plot_type = "domino"
+
 
 
 def __plot(plot_type, data, backend=_backend, **kwargs):

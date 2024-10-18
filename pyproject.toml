@@ -17,7 +17,9 @@ dependencies = [
     "pandas>=1.0",
     "numpy>=1.18",
     "plotly>=5.0",
-    "scipy>=1.5"
+    "scipy>=1.5",
+    "matplotlib>=3.5",
+    "kaleido>=0.2",
 ]
 
 [tool.setuptools]

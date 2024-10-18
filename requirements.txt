@@ -4,3 +4,4 @@ plotly
 warnings-plugin
 scipy
 kaleido
+matplotlib
