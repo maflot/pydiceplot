@@ -1,10 +1,10 @@
-from pydiceplot._backend import _backend
 import importlib
 import warnings
 
 
 class Plot:
     def __init__(self, **kwargs):
+        from pydiceplot._backend import _backend
         module_name = f"pydiceplot.plots.backends._{_backend}_backend"
         self._backend_module = importlib.import_module(module_name)
         self.fig = None
@@ -66,8 +66,8 @@ if __name__ == "__main__":
 
     import numpy as np
     import pandas as pd
-    from pydiceplot._backend import set_backend
-    set_backend("matplotlib")
+    import pydiceplot
+    pydiceplot.set_backend("matplotlib")
 
     plot_path = "./plots"
 
