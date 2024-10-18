@@ -1,7 +1,7 @@
+from ._backend import _backend
 
 
-
-def __plot(plot_type, data, backend="plotly", **kwargs):
+def __plot(plot_type, data, backend=_backend, **kwargs):
     """Plots a dice or domino plot.
 
     Parameters
