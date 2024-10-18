@@ -1,13 +1,11 @@
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import os
 import warnings
-from _utils import (
+from pydiceplot.plots.backend._utils import (
     prepare_data,
     perform_clustering,
     calculate_var_positions,
-    create_binary_matrix,
     generate_plot_dimensions,
     add_rectangles_to_plot,
     add_scatter_traces,

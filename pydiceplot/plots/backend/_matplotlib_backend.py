@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import os
 import warnings
-from pydiceplot.plots._utils import (
+from pydiceplot.plots.backend._utils import (
     prepare_data,
     perform_clustering,
     calculate_var_positions,
