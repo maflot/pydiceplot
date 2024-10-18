@@ -23,4 +23,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["pydiceplot"]
+packages = ["pydiceplot", "pydiceplot.plots", "pydiceplot.plots.backends"]
