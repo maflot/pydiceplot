@@ -1,8 +1,10 @@
+# _utils.py
+
 import pandas as pd
+import numpy as np
 import warnings
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import linkage, dendrogram
-
 
 def prepare_data(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors):
     """
@@ -11,53 +13,71 @@ def prepare_data(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors):
     Parameters:
     - data: DataFrame containing the necessary variables.
     - cat_a, cat_b, cat_c, group: Column names for categories and grouping.
-    - cat_c_colors, group_colors: Dictionaries for coloring categories.
+    - cat_c_colors, group_colors: Dictionaries for category colors.
 
     Returns:
-    - data: Modified DataFrame with categorical types.
-    - cat_a_order: Ordered list of category A.
-    - cat_b_order: Ordered list of category B.
+    - data: Updated DataFrame with categorical types.
+    - cat_a_order: List of ordered categories for cat_a.
+    - cat_b_order: List of ordered categories for cat_b.
     """
     # Ensure consistent ordering of factors
-    data[cat_a] = pd.Categorical(data[cat_a], categories=sorted(data[cat_a].unique()), ordered=True)
-    data[cat_b] = pd.Categorical(data[cat_b], categories=sorted(data[cat_b].unique()), ordered=True)
-    data[cat_c] = pd.Categorical(data[cat_c], categories=list(cat_c_colors.keys()), ordered=True)
-    data[group] = pd.Categorical(data[group], categories=list(group_colors.keys()), ordered=True)
+    data[cat_a] = pd.Categorical(
+        data[cat_a],
+        categories=sorted(data[cat_a].unique()),
+        ordered=True
+    )
+    data[cat_b] = pd.Categorical(
+        data[cat_b],
+        categories=sorted(data[cat_b].unique()),
+        ordered=True
+    )
+    data[cat_c] = pd.Categorical(
+        data[cat_c],
+        categories=list(cat_c_colors.keys()),
+        ordered=True
+    )
+    data[group] = pd.Categorical(
+        data[group],
+        categories=list(group_colors.keys()),
+        ordered=True
+    )
 
     cat_a_order = data[cat_a].cat.categories.tolist()
     cat_b_order = data[cat_b].cat.categories.tolist()
 
     return data, cat_a_order, cat_b_order
 
-
 def create_binary_matrix(data, cat_a, cat_b, cat_c):
     """
     Creates a binary matrix for clustering.
 
     Parameters:
-    - data: DataFrame with categorical variables.
+    - data: DataFrame containing the necessary variables.
     - cat_a, cat_b, cat_c: Column names for categories.
 
     Returns:
-    - binary_matrix_df: Pivoted binary matrix DataFrame.
+    - binary_matrix_df: Binary matrix DataFrame.
     """
     data['present'] = 1
     grouped = data.groupby([cat_a, cat_b, cat_c])['present'].sum().reset_index()
     grouped['combined'] = grouped[cat_b].astype(str) + "_" + grouped[cat_c].astype(str)
-    binary_matrix_df = grouped.pivot(index=cat_a, columns='combined', values='present').fillna(0)
+    binary_matrix_df = grouped.pivot(
+        index=cat_a,
+        columns='combined',
+        values='present'
+    ).fillna(0)
     return binary_matrix_df
-
 
 def perform_clustering(data, cat_a, cat_b, cat_c):
     """
     Performs hierarchical clustering on the data to order cat_a.
 
     Parameters:
-    - data: DataFrame with categorical variables.
+    - data: DataFrame containing the necessary variables.
     - cat_a, cat_b, cat_c: Column names for categories.
 
     Returns:
-    - cat_a_order: Ordered list of category A based on clustering.
+    - cat_a_order: List of ordered categories for cat_a based on clustering.
     """
     # Create a binary matrix for clustering
     binary_matrix_df = create_binary_matrix(data, cat_a, cat_b, cat_c)
@@ -75,13 +95,12 @@ def perform_clustering(data, cat_a, cat_b, cat_c):
 
     return cat_a_order
 
-
 def calculate_var_positions(cat_c_colors, max_dice_sides):
     """
     Calculates positions for dice sides based on the number of variables.
 
     Parameters:
-    - cat_c_colors: Dictionary of colors for category C variables.
+    - cat_c_colors: Dictionary of colors for cat_c variables.
     - max_dice_sides: Maximum number of dice sides (1-6).
 
     Returns:
@@ -109,19 +128,18 @@ def calculate_var_positions(cat_c_colors, max_dice_sides):
     })
     return var_positions
 
-
 def generate_plot_dimensions(n_x, n_y):
     """
     Generates plot dimensions to make boxes square.
 
     Parameters:
-    - n_x: Number of categories in X-axis.
-    - n_y: Number of categories in Y-axis.
+    - n_x: Number of categories along the x-axis.
+    - n_y: Number of categories along the y-axis.
 
     Returns:
     - plot_width: Width of the plot in pixels.
     - plot_height: Height of the plot in pixels.
-    - margins: Dictionary of plot margins.
+    - margins: Dictionary with plot margins.
     """
     box_size = 50  # pixels per box
     margin_l = 150
@@ -133,7 +151,6 @@ def generate_plot_dimensions(n_x, n_y):
     margins = dict(l=margin_l, r=margin_r, t=margin_t, b=margin_b)
     return plot_width, plot_height, margins
 
-
 def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors, max_dice_sides):
     """
     Preprocesses data for dice plot generation.
@@ -141,13 +158,14 @@ def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_c
     Parameters:
     - data: DataFrame containing the necessary variables.
     - cat_a, cat_b, cat_c, group: Column names for categories and grouping.
-    - cat_c_colors, group_colors: Dictionaries for coloring categories.
+    - cat_c_colors, group_colors: Dictionaries for category colors.
     - max_dice_sides: Maximum number of dice sides.
 
     Returns:
     - plot_data: DataFrame prepared for plotting.
     - box_data: DataFrame with box dimensions.
-    - cat_a_order, cat_b_order: Ordered categories.
+    - cat_a_order: Ordered categories for cat_a.
+    - cat_b_order: Ordered categories for cat_b.
     - var_positions: DataFrame with variable positions.
     - plot_dimensions: Tuple with plot width, height, and margins.
     """

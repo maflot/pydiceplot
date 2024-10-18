@@ -11,10 +11,11 @@ class Plot:
         self.fig = None
 
     def show(self):
-        getattr(self._backend_module, "show")(self.fig)
+        getattr(self._backend_module, "show_plot")(self.fig)
 
-    def save(self, filename):
-        getattr(self._backend_module, "save")(self.fig, filename)
+    def save(self, plot_path, output_str, formats):
+        (getattr(self._backend_module, "save_plot")
+         (self.fig, plot_path, output_str, formats))
 
 
 class DicePlot(Plot):
