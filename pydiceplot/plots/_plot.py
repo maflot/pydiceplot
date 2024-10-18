@@ -1,42 +1,31 @@
 from pydiceplot._backend import _backend
+import importlib
 
 
 class Plot:
     def __init__(self, **kwargs):
         self.plot_type = kwargs.get("plot_type", "dice")
         self.data = kwargs.get("data")
-
-    def plot(self):
-        if self.plot_type == "dice":
-            return self.dice_plot()
-        elif self.plot_type == "domino":
-            return self.domino_plot()
-        else:
-            raise ValueError(f"Unknown plot type: {self.plot_type}")
-
-    def dice_plot(self):
-        pass
-
-    def domino_plot(self):
-        pass
+        module_name = f"pydiceplot.backends.{_backend}_backend"
+        self._backend_module = importlib.import_module(module_name)
+        self.fig = None
 
     def show(self):
-        pass
+        getattr(self._backend_module, "show")(self.fig)
 
-    def save(self):
-        pass
+    def save(self, filename):
+        getattr(self._backend_module, "save")(self.fig, filename)
 
 
 class DicePlot(Plot):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-
+        self._plot_function = getattr(
+            self._backend_module, "plot_dice")
 
 class DominoPlot(Plot):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.plot_type = "domino"
-
 
 
 def __plot(plot_type, data, backend=_backend, **kwargs):
@@ -47,8 +36,8 @@ def __plot(plot_type, data, backend=_backend, **kwargs):
             The type of plot to create. Either "dice" or "domino".
         data : pd.DataFrame
             The data to plot.
-        backend : str
-            The plotting backend to use. Either "plotly" or "matplotlib".
+        backends : str
+            The plotting backends to use. Either "plotly" or "matplotlib".
     """
 
     if plot_type == "dice":
@@ -63,7 +52,7 @@ def __plot(plot_type, data, backend=_backend, **kwargs):
     elif backend == "matplotlib":
         return plot_func(data, renderer=plot_with_matplotlib, **kwargs)
     else:
-        raise ValueError(f"Unknown backend: {backend}")
+        raise ValueError(f"Unknown backends: {backend}")
 
 
 def dice_plot():

@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import warnings
-from pydiceplot.plots.backend._utils import (
+from pydiceplot.plots.backends._utils_depr import (
     prepare_data,
     perform_clustering,
     calculate_var_positions,
