@@ -6,16 +6,16 @@ from ._utils import (
 
 
 def plot_dice(data,
-             cat_a,
-             cat_b,
-             cat_c,
-             group,
-             switch_axis=False,
-             group_alpha=0.6,
-             title=None,
-             cat_c_colors=None,
-             group_colors=None,
-             max_dice_sides=6):
+              cat_a,
+              cat_b,
+              cat_c,
+              group,
+              switch_axis=False,
+              group_alpha=0.6,
+              title=None,
+              cat_c_colors=None,
+              group_colors=None,
+              max_dice_sides=6):
     """
     Plotly-specific dice plot function.
 
