@@ -1,74 +1,11 @@
-import importlib
-import warnings
-
-
-class Plot:
-    def __init__(self, **kwargs):
-        from pydiceplot._backend import _backend
-        module_name = f"pydiceplot.plots.backends._{_backend}_backend"
-        self._backend_module = importlib.import_module(module_name)
-        self.fig = None
-
-    def prepare_plot(self, **kwargs):
-        self.fig = self._plot_function(**kwargs)
-
-    def show(self):
-        getattr(self._backend_module, "show_plot")(self.fig)
-
-    def save(self, plot_path, output_str, formats):
-        (getattr(self._backend_module, "save_plot")
-         (self.fig, plot_path, output_str, formats))
-
-
-class DicePlot(Plot):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._plot_function = getattr(
-            self._backend_module, "plot_dice")
-
-class DominoPlot(Plot):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-
-
-def dice_plot(data,
-              cat_a,
-              cat_b,
-              cat_c,
-              group,
-              switch_axis=False,
-              group_alpha=0.6,
-              title=None,
-              cat_c_colors=None,
-              group_colors=None,
-              max_dice_sides=6):
-    fig = DicePlot()
-    fig.prepare_plot(data=data,
-             cat_a=cat_a,
-             cat_b=cat_b,
-             cat_c=cat_c,
-             group=group,
-             switch_axis=switch_axis,
-             group_alpha=group_alpha,
-             title=title,
-             cat_c_colors=cat_c_colors,
-             group_colors=group_colors,
-             max_dice_sides=max_dice_sides)
-    return fig
-
-
-def domino_plot():
-    warnings.warn("Domino plots are not yet implemented.")
-    return None
+import numpy as np
+import pandas as pd
+from pydiceplot import dice_plot
+import pydiceplot
+pydiceplot.set_backend("matplotlib")
 
 
 if __name__ == "__main__":
-
-    import numpy as np
-    import pandas as pd
-    from pydiceplot import dice_plot
-    import pydiceplot
-    pydiceplot.set_backend("matplotlib")
 
     plot_path = "./plots"
 
