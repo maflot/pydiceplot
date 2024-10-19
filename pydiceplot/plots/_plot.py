@@ -59,9 +59,60 @@ def dice_plot(data,
     return fig
 
 
-def domino_plot():
-    warnings.warn("Domino plots are not yet implemented.")
-    return None
+def domino_plot(data,
+                gene_list,
+                switch_axis=False,
+                min_dot_size=1,
+                max_dot_size=5,
+                spacing_factor=3,
+                var_id="var",
+                feature_col="gene",
+                celltype_col="CellType",
+                contrast_col="Contrast",
+                contrast_levels=["Clinical", "Pathological"],
+                contrast_labels=["Clinical", "Pathological"],
+                logfc_col="avg_log2FC",
+                pval_col="p_val_adj",
+                logfc_limits=(-1.5, 1.5),
+                logfc_colors={"low": "blue", "mid": "white", "high": "red"},
+                color_scale_name="Log2 Fold Change",
+                size_scale_name="-log10(adj. p-value)",
+                axis_text_size=8,
+                aspect_ratio=None,
+                base_width=5,
+                base_height=4,
+                output_file=None,
+                title=None):
+    plot = DominoPlot()
+
+    plot.prepare_plot(
+        data=data,
+        gene_list=gene_list,
+        switch_axis=switch_axis,
+        min_dot_size=min_dot_size,
+        max_dot_size=max_dot_size,
+        spacing_factor=spacing_factor,
+        var_id=var_id,
+        feature_col=feature_col,
+        celltype_col=celltype_col,
+        contrast_col=contrast_col,
+        contrast_levels=contrast_levels,
+        contrast_labels=contrast_labels,
+        logfc_col=logfc_col,
+        pval_col=pval_col,
+        logfc_limits=logfc_limits,
+        logfc_colors=logfc_colors,
+        color_scale_name=color_scale_name,
+        size_scale_name=size_scale_name,
+        axis_text_size=axis_text_size,
+        aspect_ratio=aspect_ratio,
+        base_width=base_width,
+        base_height=base_height,
+        output_file=output_file,
+        title=title
+    )
+
+    return plot
 
 
 if __name__ == "__main__":
