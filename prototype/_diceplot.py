@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import warnings
-from pydiceplot.plots.backends._utils_depr import (
+from prototype._utils_depr import (
     prepare_data,
     perform_clustering,
     calculate_var_positions,
@@ -124,7 +124,7 @@ def dice_plot(data,
 
 # Adapted Main Function with Multiple Examples
 if __name__ == "__main__":
-    plot_path = "./plots"
+    plot_path = "../pydiceplot/plots/plots"
 
     # Define cell types (cat_a)
     cell_types = ["Neuron", "Astrocyte", "Microglia", "Oligodendrocyte", "Endothelial"]
