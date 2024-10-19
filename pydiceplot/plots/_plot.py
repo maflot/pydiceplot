@@ -29,6 +29,8 @@ class DicePlot(Plot):
 class DominoPlot(Plot):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self._plot_function = getattr(
+            self._backend_module, "plot_domino")
 
 
 def dice_plot(data,
