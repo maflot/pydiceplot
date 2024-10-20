@@ -239,13 +239,6 @@ def plot_domino(data,
     if switch_axis:
         fig = switch_axes_domino(fig, backend='plotly')
 
-    # Save the plot
-    if output_file:
-        plot_path = os.path.dirname(output_file)
-        output_str = os.path.basename(output_file).split('.')[0]
-        fmt = os.path.splitext(output_file)[1]
-        save_plot(fig, plot_path, output_str, [fmt])
-
     return fig
 
 
