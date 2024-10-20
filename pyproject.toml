@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pydiceplot"
-version = "0.0"
+version = "0.0.1"
 description = "Plot multidimensional categorical data"
 authors = [
     { name = "Matthias Flotho", email = "Matthias.Flotho@ccb.uni-saarland.de" },
