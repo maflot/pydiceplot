@@ -126,24 +126,35 @@ def calculate_var_positions(cat_c_colors, max_dice_sides):
     })
     return var_positions
 
-def generate_plot_dimensions(n_x, n_y):
+def generate_plot_dimensions(n_x, n_y, n_dice):
     """
-    Generates plot dimensions to make boxes square.
+    Generates plot dimensions to make boxes square, adjusting size based on the number of dice sides.
 
     Parameters:
     - n_x: Number of categories along the x-axis.
     - n_y: Number of categories along the y-axis.
+    - n_dice: Number of sides (eyes) the dice is showing.
 
     Returns:
     - plot_width: Width of the plot in pixels.
     - plot_height: Height of the plot in pixels.
     - margins: Dictionary with plot margins.
     """
-    box_size = 50  # pixels per box
-    margin_l = 150
-    margin_r = 300
-    margin_t = 100
-    margin_b = 200
+    # Base box size
+    base_box_size = 50  # pixels per box
+
+    # Adjust box size based on n_dice
+    # Increase box size slightly for higher n_dice to accommodate more details
+    box_size = base_box_size + (n_dice - 1) * 5
+
+    # Adjust margins based on n_dice
+    # Larger n_dice might require more space for labels and dice representation
+    margin_l = 150 + (n_dice - 1) * 10
+    margin_r = 300 + (n_dice - 1) * 10
+    margin_t = 100 + (n_dice - 1) * 10
+    margin_b = 200 + (n_dice - 1) * 10
+
+    # Calculate plot dimensions
     plot_width = box_size * n_x + margin_l + margin_r
     plot_height = box_size * n_y + margin_t + margin_b
     margins = dict(l=margin_l, r=margin_r, t=margin_t, b=margin_b)
@@ -207,7 +218,7 @@ def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_c
     box_data = box_data.sort_values(by=[cat_a, group, cat_b])
 
     # Generate plot dimensions
-    plot_dimensions = generate_plot_dimensions(len(cat_a_order), len(cat_b_order))
+    plot_dimensions = generate_plot_dimensions(len(cat_a_order), len(cat_b_order), len(cat_c_colors))
 
     return plot_data, box_data, cat_a_order, cat_b_order, var_positions, plot_dimensions
 
@@ -282,7 +293,9 @@ def get_diceplot_example_data(n):
 
 
 def get_example_group_colors():
-
+    """
+        Returns a Colorpalette fitting the example dataframe
+    """
     return {
         "Linked": "#333333",
         "UnLinked": "#888888",
@@ -290,6 +303,9 @@ def get_example_group_colors():
     }
 
 def get_example_cat_c_colors():
+    """
+        Returns a Colorpalette fitting the example dataframe
+    """
     return {
         "Alzheimer's disease": "#d5cccd",
         "Cancer": "#cb9992",
