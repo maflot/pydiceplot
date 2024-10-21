@@ -115,12 +115,10 @@ def plot_domino(data,
                 logfc_limits=(-1.5, 1.5),
                 logfc_colors={"low": "blue", "mid": "white", "high": "red"},
                 color_scale_name="Log2 Fold Change",
-                size_scale_name="-log10(adj. p-value)",
                 axis_text_size=8,
                 aspect_ratio=None,
                 base_width=5,
                 base_height=4,
-                output_file=None,
                 title=None):
     """
     Plotly-specific domino plot function.
@@ -240,13 +238,6 @@ def plot_domino(data,
     # Apply axis switching if needed
     if switch_axis:
         fig = switch_axes_domino(fig, backend='plotly')
-
-    # Save the plot
-    if output_file:
-        plot_path = os.path.dirname(output_file)
-        output_str = os.path.basename(output_file).split('.')[0]
-        fmt = os.path.splitext(output_file)[1]
-        save_plot(fig, plot_path, output_str, [fmt])
 
     return fig
 

@@ -76,12 +76,10 @@ def domino_plot(data,
                 logfc_limits=(-1.5, 1.5),
                 logfc_colors={"low": "blue", "mid": "white", "high": "red"},
                 color_scale_name="Log2 Fold Change",
-                size_scale_name="-log10(adj. p-value)",
                 axis_text_size=8,
                 aspect_ratio=None,
                 base_width=5,
                 base_height=4,
-                output_file=None,
                 title=None):
     plot = DominoPlot()
 
@@ -103,12 +101,10 @@ def domino_plot(data,
         logfc_limits=logfc_limits,
         logfc_colors=logfc_colors,
         color_scale_name=color_scale_name,
-        size_scale_name=size_scale_name,
         axis_text_size=axis_text_size,
         aspect_ratio=aspect_ratio,
         base_width=base_width,
         base_height=base_height,
-        output_file=output_file,
         title=title
     )
 

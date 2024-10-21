@@ -108,12 +108,10 @@ def plot_domino(data,
                 logfc_limits=(-1.5, 1.5),
                 logfc_colors={"low": "blue", "mid": "white", "high": "red"},
                 color_scale_name="Log2 Fold Change",
-                size_scale_name="-log10(adj. p-value)",
                 axis_text_size=8,
                 aspect_ratio=None,
                 base_width=5,
                 base_height=4,
-                output_file=None,
                 title=None):
     """
     Matplotlib-specific domino plot function.
@@ -222,14 +220,6 @@ def plot_domino(data,
 
     # Adjust layout
     plt.tight_layout()
-
-    # Save the plot
-    if output_file:
-        plot_path = os.path.dirname(output_file)
-        if not os.path.exists(plot_path):
-            os.makedirs(plot_path)
-        fmt = os.path.splitext(output_file)[1].strip('.')
-        fig.savefig(output_file, format=fmt, bbox_inches='tight')
 
     return fig
 

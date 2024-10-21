@@ -6,7 +6,7 @@ from pydiceplot import domino_plot
 import pydiceplot
 
 # Set the backend to either "matplotlib" or "plotly"
-pydiceplot.set_backend("matplotlib")  # You can change to "plotly" if desired
+pydiceplot.set_backend("matploptlib")  # You can change to "plotly" if desired
 
 if __name__ == "__main__":
 
@@ -73,7 +73,6 @@ if __name__ == "__main__":
             max_dot_size=5,
             logfc_limits=(-2, 2),
             logfc_colors=logfc_colors,
-            output_file=None,  # We'll save it using fig.save()
             title=title
         )
 
