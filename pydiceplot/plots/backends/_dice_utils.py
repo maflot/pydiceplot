@@ -210,3 +210,91 @@ def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_c
     plot_dimensions = generate_plot_dimensions(len(cat_a_order), len(cat_b_order))
 
     return plot_data, box_data, cat_a_order, cat_b_order, var_positions, plot_dimensions
+
+
+
+def get_diceplot_example_data(n):
+    """
+    Returns a DataFrame suitable for creating a dice plot with n pathology variables.
+
+    Parameters:
+    n (int): Number of pathology variables (1 <= n <= 6)
+
+    Returns:
+    DataFrame: DataFrame containing the data for the dice plot, including 'Group' variable.
+    """
+    # Ensure n is between 1 and 6
+    if n < 1 or n > 6:
+        raise ValueError("n must be between 1 and 6")
+
+    # Define cell types
+    cell_types = ["Neuron", "Astrocyte", "Microglia", "Oligodendrocyte", "Endothelial"]
+
+    # Define pathways (ensure 15 pathways)
+    pathways_extended = [
+        "Apoptosis", "Inflammation", "Metabolism", "Signal Transduction", "Synaptic Transmission",
+        "Cell Cycle", "DNA Repair", "Protein Synthesis", "Lipid Metabolism", "Neurotransmitter Release",
+        "Oxidative Stress", "Energy Production", "Calcium Signaling", "Synaptic Plasticity", "Immune Response"
+    ]
+
+    # Assign groups to pathways
+    # Ensure that each pathway has only one group
+    pathway_groups = pd.DataFrame({
+        "Pathway": pathways_extended[:15],  # Ensure 15 pathways
+        "Group": [
+            "Linked", "UnLinked", "Other", "Linked", "UnLinked",
+            "UnLinked", "Other", "Other", "Other", "Linked",
+            "Other", "Other", "Linked", "UnLinked", "Other"
+        ]
+    })
+
+    # Define pathology variables for n=6
+    pathology_vars_6 = ["Alzheimer's disease", "Cancer", "Flu", "ADHD", "Age", "Weight"]
+
+    # Use the first n variables
+    pathology_vars = pathology_vars_6[:n]
+
+    # Create dummy data
+    np.random.seed(123)
+    data = pd.DataFrame([(ct, pw) for ct in cell_types for pw in pathways_extended[:15]],
+                        columns=["CellType", "Pathway"])
+
+    # Merge the group assignments into the data
+    data = data.merge(pathway_groups, on="Pathway", how="left")
+
+    # Assign random pathology variables to each combination
+    data_list = []
+    for idx, row in data.iterrows():
+        # For each cell type and pathway, randomly assign between 1 and n pathology variables
+        variables = np.random.choice(pathology_vars, size=np.random.randint(1, n + 1), replace=False)
+        for var in variables:
+            data_list.append({
+                "CellType": row["CellType"],
+                "Pathway": row["Pathway"],
+                "Group": row["Group"],
+                "PathologyVariable": var
+            })
+
+    # Create DataFrame from data_list
+    data_expanded = pd.DataFrame(data_list)
+
+    return data_expanded
+
+
+def get_example_group_colors():
+
+    return {
+        "Linked": "#333333",
+        "UnLinked": "#888888",
+        "Other": "#DDDDDD"
+    }
+
+def get_example_cat_c_colors():
+    return {
+        "Alzheimer's disease": "#d5cccd",
+        "Cancer": "#cb9992",
+        "Flu": "#ad310f",
+        "ADHD": "#7e2a20",
+        "Age": "#FFD700",
+        "Weight": "#FF6622"
+    }
