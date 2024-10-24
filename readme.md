@@ -90,7 +90,7 @@ For full documentation and additional examples, please refer to the [documentati
 
 - **Visualize Complex Data:** Easily create plots for datasets with multiple categorical variables.
 - **Customization:** Customize plots with titles, labels, and themes.
-- **Integration with ggplot2:** Leverages the power of `ggplot2` for advanced plotting capabilities.
+- **Integration with plotly and matplotlib:** Leverages the power of `plotly` and `matplotlib` for advanced plotting capabilities.
 
 ## Contributing
 
