@@ -33,7 +33,7 @@ For full documentation and additional examples, please refer to the [documentati
 
 ## Usage example
 
-´´´python 
+```python 
 
     import numpy as np
     import pandas as pd
@@ -83,7 +83,7 @@ For full documentation and additional examples, please refer to the [documentati
             # Display and save the figure
             fig.show()
 
-´´´
+```
 
 ## Features
 
