@@ -66,32 +66,56 @@ def create_binary_matrix(data, cat_a, cat_b, cat_c):
     ).fillna(0)
     return binary_matrix_df
 
-def perform_clustering(data, cat_a, cat_b, cat_c):
+def perform_clustering(data, cat_a, cat_b, cat_c, group, cluster_on='cat_b'):
     """
-    Performs hierarchical clustering on the data to order cat_a.
+    Performs hierarchical clustering on the data to order cat_b within each group.
 
     Parameters:
     - data: DataFrame containing the necessary variables.
-    - cat_a, cat_b, cat_c: Column names for categories.
+    - cat_a, cat_b, cat_c, group: Column names for categories.
+    - cluster_on: Specify whether to cluster on 'cat_a' or 'cat_b'.
 
     Returns:
-    - cat_a_order: List of ordered categories for cat_a based on clustering.
+    - cat_order: List of ordered categories for cat_b based on clustering within groups.
     """
-    # Create a binary matrix for clustering
-    binary_matrix_df = create_binary_matrix(data, cat_a, cat_b, cat_c)
-    binary_matrix = binary_matrix_df.values
+    if cluster_on == 'cat_b':
+        cat_order = []
+        groups = data[group].cat.categories.tolist()
+        for grp in groups:
+            data_grp = data[data[group] == grp]
+            # Create a binary matrix for clustering within the group
+            # Pivot the data to have 'cat_b' as rows
+            data_grp['present'] = 1
+            grouped = data_grp.groupby([cat_b, cat_a, cat_c])['present'].sum().reset_index()
+            grouped['combined'] = grouped[cat_a].astype(str) + "_" + grouped[cat_c].astype(str)
+            binary_matrix_df = grouped.pivot(
+                index=cat_b,
+                columns='combined',
+                values='present'
+            ).fillna(0)
+            binary_matrix = binary_matrix_df.values
 
-    # Perform hierarchical clustering
-    cell_types = binary_matrix_df.index.tolist()
-    if binary_matrix.shape[0] > 1:
-        distance_matrix = pdist(binary_matrix, metric='jaccard')
-        Z = linkage(distance_matrix, method='ward')
-        dendro = dendrogram(Z, labels=cell_types, no_plot=True)
-        cat_a_order = dendro['ivl'][::-1]  # Reverse to match desired order
+            # Perform hierarchical clustering within the group
+            cat_b_list = binary_matrix_df.index.tolist()
+            if binary_matrix.shape[0] > 1:
+                distance_matrix = pdist(binary_matrix, metric='jaccard')
+                Z = linkage(distance_matrix, method='ward')
+                dendro = dendrogram(Z, labels=cat_b_list, no_plot=True)
+                cat_grp_order = dendro['ivl']  # No need to reverse for rows
+            else:
+                cat_grp_order = cat_b_list
+
+            cat_order.extend(cat_grp_order)
+
+        # Remove duplicates while preserving order
+        from collections import OrderedDict
+        cat_order = list(OrderedDict.fromkeys(cat_order))
+
+        return cat_order
     else:
-        cat_a_order = cell_types
+        # Original clustering on cat_a if needed
+        pass
 
-    return cat_a_order
 
 def calculate_var_positions(cat_c_colors, max_dice_sides):
     """
@@ -195,8 +219,8 @@ def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_c
     var_positions = calculate_var_positions(cat_c_colors, max_dice_sides)
 
     # Perform hierarchical clustering to order cat_a
-    cat_a_order = perform_clustering(data, cat_a, cat_b, cat_c)
-    data[cat_a] = pd.Categorical(data[cat_a], categories=cat_a_order, ordered=True)
+    cat_b_order = perform_clustering(data, cat_a, cat_b, cat_c, group, cluster_on='cat_b')
+    data[cat_b] = pd.Categorical(data[cat_b], categories=cat_b_order, ordered=True)
 
     # Update plot_data
     plot_data = data.merge(var_positions, left_on=cat_c, right_on='var', how='left')

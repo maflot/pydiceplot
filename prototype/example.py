@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
 
     # Generate and save dice plots for different numbers of pathology variables
-    for n in [3, 4, 5, 6]:
+    for n in [2,3, 4, 5, 6]:
         # Get the data using the utility function
         # load example data
         data_expanded = get_diceplot_example_data(n)
@@ -44,5 +44,3 @@ if __name__ == "__main__":
 
         # Display and save the figure
         fig.show()
-
-    print(f"All dice plots have been saved to the '{plot_path}' directory in PNG format.")
