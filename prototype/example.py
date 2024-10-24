@@ -8,6 +8,7 @@ import pydiceplot
 
 # Set the backend for pydiceplot
 pydiceplot.set_backend("matplotlib")
+pydiceplot.set_backend("plotly")
 
 if __name__ == "__main__":
     plot_path = "./plots"
@@ -34,7 +35,7 @@ if __name__ == "__main__":
             cat_a="CellType",
             cat_b="Pathway",
             cat_c="PathologyVariable",
-            group="Group",
+            group="Group", # default is set to None, it will color the boxes plain white
             switch_axis=False,
             title=title,
             cat_c_colors=current_cat_c_colors,

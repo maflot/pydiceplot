@@ -34,11 +34,12 @@ def prepare_data(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors):
         categories=list(cat_c_colors.keys()),
         ordered=True
     )
-    data[group] = pd.Categorical(
+    if group is not None:
+        data[group] = pd.Categorical(
         data[group],
         categories=list(group_colors.keys()),
         ordered=True
-    )
+        )
 
     cat_a_order = data[cat_a].cat.categories.tolist()
     cat_b_order = data[cat_b].cat.categories.tolist()
@@ -66,7 +67,7 @@ def create_binary_matrix(data, cat_a, cat_b, cat_c):
     ).fillna(0)
     return binary_matrix_df
 
-def perform_clustering(data, cat_a, cat_b, cat_c, group, cluster_on='cat_b'):
+def perform_clustering(data, cat_a, cat_b, cat_c, group):
     """
     Performs hierarchical clustering on the data to order cat_b within each group.
 
@@ -78,44 +79,39 @@ def perform_clustering(data, cat_a, cat_b, cat_c, group, cluster_on='cat_b'):
     Returns:
     - cat_order: List of ordered categories for cat_b based on clustering within groups.
     """
-    if cluster_on == 'cat_b':
-        cat_order = []
-        groups = data[group].cat.categories.tolist()
-        for grp in groups:
-            data_grp = data[data[group] == grp]
-            # Create a binary matrix for clustering within the group
-            # Pivot the data to have 'cat_b' as rows
-            data_grp['present'] = 1
-            grouped = data_grp.groupby([cat_b, cat_a, cat_c])['present'].sum().reset_index()
-            grouped['combined'] = grouped[cat_a].astype(str) + "_" + grouped[cat_c].astype(str)
-            binary_matrix_df = grouped.pivot(
-                index=cat_b,
-                columns='combined',
-                values='present'
-            ).fillna(0)
-            binary_matrix = binary_matrix_df.values
+    cat_order = []
+    groups = data[group].cat.categories.tolist()
+    for grp in groups:
+        data_grp = data[data[group] == grp]
+        # Create a binary matrix for clustering within the group
+        # Pivot the data to have 'cat_b' as rows
+        data_grp['present'] = 1
+        grouped = data_grp.groupby([cat_b, cat_a, cat_c])['present'].sum().reset_index()
+        grouped['combined'] = grouped[cat_a].astype(str) + "_" + grouped[cat_c].astype(str)
+        binary_matrix_df = grouped.pivot(
+            index=cat_b,
+            columns='combined',
+            values='present'
+        ).fillna(0)
+        binary_matrix = binary_matrix_df.values
 
-            # Perform hierarchical clustering within the group
-            cat_b_list = binary_matrix_df.index.tolist()
-            if binary_matrix.shape[0] > 1:
-                distance_matrix = pdist(binary_matrix, metric='jaccard')
-                Z = linkage(distance_matrix, method='ward')
-                dendro = dendrogram(Z, labels=cat_b_list, no_plot=True)
-                cat_grp_order = dendro['ivl']  # No need to reverse for rows
-            else:
-                cat_grp_order = cat_b_list
+        # Perform hierarchical clustering within the group
+        cat_b_list = binary_matrix_df.index.tolist()
+        if binary_matrix.shape[0] > 1:
+            distance_matrix = pdist(binary_matrix, metric='jaccard')
+            Z = linkage(distance_matrix, method='ward')
+            dendro = dendrogram(Z, labels=cat_b_list, no_plot=True)
+            cat_grp_order = dendro['ivl']  # No need to reverse for rows
+        else:
+            cat_grp_order = cat_b_list
 
-            cat_order.extend(cat_grp_order)
+        cat_order.extend(cat_grp_order)
 
-        # Remove duplicates while preserving order
-        from collections import OrderedDict
-        cat_order = list(OrderedDict.fromkeys(cat_order))
+    # Remove duplicates while preserving order
+    from collections import OrderedDict
+    cat_order = list(OrderedDict.fromkeys(cat_order))
 
-        return cat_order
-    else:
-        # Original clustering on cat_a if needed
-        pass
-
+    return cat_order
 
 def calculate_var_positions(cat_c_colors, max_dice_sides):
     """
@@ -184,13 +180,15 @@ def generate_plot_dimensions(n_x, n_y, n_dice):
     margins = dict(l=margin_l, r=margin_r, t=margin_t, b=margin_b)
     return plot_width, plot_height, margins
 
-def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors, max_dice_sides):
+
+def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group=None, cat_c_colors=None, group_colors=None, max_dice_sides=6):
     """
-    Preprocesses data for dice plot generation.
+    Preprocesses data for dice plot generation with handling for None group.
 
     Parameters:
     - data: DataFrame containing the necessary variables.
-    - cat_a, cat_b, cat_c, group: Column names for categories and grouping.
+    - cat_a, cat_b, cat_c: Column names for categories.
+    - group: Optional, column name for grouping (can be None).
     - cat_c_colors, group_colors: Dictionaries for category colors.
     - max_dice_sides: Maximum number of dice sides.
 
@@ -207,20 +205,22 @@ def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_c
         data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors
     )
 
-    # Check for unique group per cat_b
-    group_check = data.groupby(cat_b)[group].nunique().reset_index()
-    group_check = group_check[group_check[group] > 1]
-    if not group_check.empty:
-        warnings.warn("Warning: The following cat_b categories have multiple groups assigned:\n{}".format(
-            ', '.join(group_check[cat_b].tolist())
-        ))
+    if group is not None:
+        # Check for unique group per cat_b
+        group_check = data.groupby(cat_b)[group].nunique().reset_index()
+        group_check = group_check[group_check[group] > 1]
+        if not group_check.empty:
+            warnings.warn("Warning: The following cat_b categories have multiple groups assigned:\n{}".format(
+                ', '.join(group_check[cat_b].tolist())
+            ))
 
     # Calculate variable positions for dice sides
     var_positions = calculate_var_positions(cat_c_colors, max_dice_sides)
 
-    # Perform hierarchical clustering to order cat_a
-    cat_b_order = perform_clustering(data, cat_a, cat_b, cat_c, group, cluster_on='cat_b')
-    data[cat_b] = pd.Categorical(data[cat_b], categories=cat_b_order, ordered=True)
+    if group is not None:
+        # Perform hierarchical clustering to order cat_a if group is present
+        cat_b_order = perform_clustering(data, cat_a, cat_b, cat_c, group)
+        data[cat_b] = pd.Categorical(data[cat_b], categories=cat_b_order, ordered=True)
 
     # Update plot_data
     plot_data = data.merge(var_positions, left_on=cat_c, right_on='var', how='left')
@@ -229,23 +229,35 @@ def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_c
     plot_data['y_num'] = plot_data[cat_b].cat.codes + 1
     plot_data['x_pos'] = plot_data['x_num'] + plot_data['x_offset']
     plot_data['y_pos'] = plot_data['y_num'] + plot_data['y_offset']
-    plot_data = plot_data.sort_values(by=[cat_a, group, cat_b])
+
+    if group is not None:
+        plot_data = plot_data.sort_values(by=[cat_a, group, cat_b])
+    else:
+        plot_data = plot_data.sort_values(by=[cat_a, cat_b])
 
     # Prepare box_data
-    box_data = data[[cat_a, cat_b, group]].drop_duplicates()
+    if group is not None:
+        box_data = data[[cat_a, cat_b, group]].drop_duplicates()
+    else:
+        box_data = data[[cat_a, cat_b]].drop_duplicates()
+        box_data[group] = None  # Add a dummy column for consistency
+
     box_data['x_num'] = box_data[cat_a].cat.codes + 1
     box_data['y_num'] = box_data[cat_b].cat.codes + 1
     box_data['x_min'] = box_data['x_num'] - 0.4
     box_data['x_max'] = box_data['x_num'] + 0.4
     box_data['y_min'] = box_data['y_num'] - 0.4
     box_data['y_max'] = box_data['y_num'] + 0.4
-    box_data = box_data.sort_values(by=[cat_a, group, cat_b])
+
+    if group is not None:
+        box_data = box_data.sort_values(by=[cat_a, group, cat_b])
+    else:
+        box_data = box_data.sort_values(by=[cat_a, cat_b])
 
     # Generate plot dimensions
     plot_dimensions = generate_plot_dimensions(len(cat_a_order), len(cat_b_order), len(cat_c_colors))
 
     return plot_data, box_data, cat_a_order, cat_b_order, var_positions, plot_dimensions
-
 
 
 def get_diceplot_example_data(n):

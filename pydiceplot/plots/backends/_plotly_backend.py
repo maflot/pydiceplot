@@ -13,7 +13,7 @@ def plot_dice(data,
               cat_a,
               cat_b,
               cat_c,
-              group,
+              group=None,  # Default to None
               switch_axis=False,
               group_alpha=0.6,
               title=None,
@@ -21,7 +21,7 @@ def plot_dice(data,
               group_colors=None,
               max_dice_sides=6):
     """
-    Plotly-specific dice plot function.
+    Adapted Plotly-specific dice plot function to resemble Matplotlib's style, with handling for None group.
 
     Parameters:
     - All parameters as defined in _dice_utils.py's preprocess_dice_plot and additional plotting parameters.
@@ -50,6 +50,8 @@ def plot_dice(data,
 
     # Add rectangles for the boxes
     for _, row in box_data.iterrows():
+        # If group is None, use white color for the boxes, otherwise use group_colors
+        fill_color = "#FFFFFF" if group is None else group_colors.get(row[group], "#FFFFFF")
         fig.add_shape(
             type="rect",
             x0=row['x_min'],
@@ -57,12 +59,12 @@ def plot_dice(data,
             x1=row['x_max'],
             y1=row['y_max'],
             line=dict(color="grey", width=0.5),
-            fillcolor=group_colors.get(row[group], "#FFFFFF"),
+            fillcolor=fill_color,
             opacity=group_alpha,
             layer="below"
         )
 
-    # Add scatter traces for the PathologyVariables
+    # Add scatter points for the PathologyVariables
     for var, color in cat_c_colors.items():
         var_data = plot_data[plot_data[cat_c] == var]
         fig.add_trace(go.Scatter(
@@ -72,31 +74,45 @@ def plot_dice(data,
             marker=dict(
                 size=10,
                 color=color,
-                line=dict(width=1, color='black')
+                line=dict(width=1, color='black')  # Similar to Matplotlib edgecolors
             ),
             name=var,
             legendgroup=var,
             showlegend=True
         ))
 
-    # Update layout
+    # Set axis limits and labels, similar to Matplotlib
+    fig.update_xaxes(
+        range=[0, len(cat_a_order) + 1],
+        tickvals=list(range(1, len(cat_a_order) + 1)),
+        ticktext=cat_a_order,
+        showgrid=False
+    )
+    fig.update_yaxes(
+        range=[0, len(cat_b_order) + 1],
+        tickvals=list(range(1, len(cat_b_order) + 1)),
+        ticktext=cat_b_order,
+        autorange="reversed",  # Invert y-axis to match Matplotlib
+        showgrid=False
+    )
+
+    # Update layout to simplify the style and match Matplotlib's
     fig.update_layout(
         plot_bgcolor='white',
         title=title,
         legend=dict(
-            orientation='v',
+            title=cat_c,
             yanchor='top',
             y=1,
             xanchor='left',
             x=1.05
         ),
-        margin=margins,
+        margin=dict(l=100, r=100, t=80, b=100),  # Match Matplotlib-like margins
         width=plot_width,
         height=plot_height
     )
 
     return fig
-
 
 def plot_domino(data,
                 gene_list,
