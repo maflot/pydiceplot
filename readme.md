@@ -14,9 +14,13 @@ pip install -r requirements.txt
 Installation via pip
 To install the package via pip, run
 ```bash
-pip install -e .
+pip install pydiceplot
 ```
-from the base directory.
+
+To install the latest version please pull the git repository and install the package via pip from the main directory:
+```bash
+pip install .
+```
 
 ## Use the dice plots in R
 for using dice plots in R please refer to [DicePlot](https://github.com/maflot/DicePlot/tree/main)
