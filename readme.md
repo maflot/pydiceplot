@@ -17,11 +17,18 @@ To install the package via pip, run
 pip install pydiceplot
 ```
 
-To install the latest version please pull the git repository and install the package via pip from the main directory:
+To install the latest version please pull the version from github:
 ```bash
-pip install .
+pip install git+https://github.com/maflot/pyDicePlot.git
+python -m example.example
 ```
-
+or install it locally:
+```bash
+git clone https://github.com/maflot/pyDicePlot.git
+cd pyDicePlot
+pip install 
+python -m example.example
+```
 ## Use the dice plots in R
 for using dice plots in R please refer to [DicePlot](https://github.com/maflot/DicePlot/tree/main)
 
