@@ -3,7 +3,7 @@
 import pandas as pd
 import numpy as np
 import os
-from prototype._diceplot import dice_plot  # Import the dice_plot function from your dice_plot.py
+from prototype.deprecated._diceplot import dice_plot  # Import the dice_plot function from your dice_plot.py
 
 # Set plot path
 plot_path = "../images"

@@ -116,7 +116,7 @@ def dice_plot(data,
 
 # Adapted Main Function with Multiple Examples
 if __name__ == "__main__":
-    plot_path = "./plots"
+    plot_path = "../plots"
 
     # Define cell types (cat_a)
     cell_types = ["Neuron", "Astrocyte", "Microglia", "Oligodendrocyte", "Endothelial"]
