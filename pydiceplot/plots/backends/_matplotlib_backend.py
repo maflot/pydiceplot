@@ -90,7 +90,6 @@ def plot_dice(data,
 
     return fig
 
-
 def plot_domino(data,
                 gene_list,
                 switch_axis=False,
@@ -114,7 +113,7 @@ def plot_domino(data,
                 base_height=4,
                 title=None):
     """
-    Matplotlib-specific domino plot function.
+    Matplotlib-specific domino plot function, with dynamic scaling for the plot and legend sizes.
 
     Parameters:
     - All parameters as defined in the domino plot specifications.
@@ -139,12 +138,16 @@ def plot_domino(data,
         max_dot_size
     )
 
+    # Dynamically adjust plot size based on number of genes and cell types
+    plot_width = base_width + len(gene_list) * 0.5  # Scale width by the number of genes
+    plot_height = base_height + len(unique_celltypes) * 0.5  # Scale height by the number of cell types
+
     # Use provided aspect_ratio if given, else use calculated
     if aspect_ratio is None:
         aspect_ratio = calculated_aspect_ratio
 
-    # Create Matplotlib figure and axes
-    fig, ax = plt.subplots(figsize=(base_width, base_height))
+    # Create Matplotlib figure and axes with dynamically scaled size
+    fig, ax = plt.subplots(figsize=(plot_width, plot_height))
 
     # Add rectangles for each gene-celltype pair
     unique_pairs = plot_data[[feature_col, celltype_col]].drop_duplicates()
@@ -173,7 +176,7 @@ def plot_domino(data,
             )
             ax.add_patch(rect)
 
-    # Add scatter points
+    # Add scatter points with dynamic marker size
     sc = ax.scatter(
         plot_data['x_pos'],
         plot_data['y_pos'],
@@ -183,19 +186,21 @@ def plot_domino(data,
         edgecolors='black'
     )
 
-    # Add colorbar
+    # Add dynamically scaled colorbar
     cbar = plt.colorbar(sc, ax=ax)
     cbar.set_label(color_scale_name)
     sc.set_clim(logfc_limits)
 
-    # Customize axes
-    ax.set_title(title)
-    ax.set_xlabel('Genes' if not switch_axis else 'Cell Types')
-    ax.set_ylabel('Cell Types' if not switch_axis else 'Genes')
+    # Adjust font sizes dynamically based on plot size
+    ax.set_title(title, fontsize=axis_text_size + len(gene_list) * 0.2)  # Dynamically scale the title size
+    ax.set_xlabel('Genes' if not switch_axis else 'Cell Types', fontsize=axis_text_size)
+    ax.set_ylabel('Cell Types' if not switch_axis else 'Genes', fontsize=axis_text_size)
+
+    # Adjust ticks based on number of genes and cell types
     ax.set_xticks([(i * spacing_factor) + 1.5 for i in range(len(gene_list))])
-    ax.set_xticklabels(gene_list, rotation=90)
+    ax.set_xticklabels(gene_list, rotation=90, fontsize=axis_text_size)
     ax.set_yticks([i + 1 for i in range(len(unique_celltypes))])
-    ax.set_yticklabels(unique_celltypes)
+    ax.set_yticklabels(unique_celltypes, fontsize=axis_text_size)
     ax.set_xlim(0, (len(gene_list) - 1) * spacing_factor + 3)
     ax.set_ylim(0, len(unique_celltypes) + 1)
 

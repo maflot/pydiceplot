@@ -1,5 +1,3 @@
-import numpy as np
-import pandas as pd
 from pydiceplot import dice_plot
 from pydiceplot.plots.backends._dice_utils import (get_diceplot_example_data,
                                                    get_example_group_colors,

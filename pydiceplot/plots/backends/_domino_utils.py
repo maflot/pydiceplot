@@ -238,3 +238,49 @@ def preprocess_domino_plot(data,
     unique_celltypes = plot_data[celltype_col].cat.categories.tolist()
 
     return plot_data, aspect_ratio, unique_celltypes, unique_genes
+
+
+# Utility function to generate the example data
+def get_domino_example_data():
+    """
+    Generate example data for domino plot.
+
+    Returns:
+    - DataFrame: Data containing gene, cell type, group, and associated variables.
+    """
+    # Define genes
+    gene_list = ["GeneA", "GeneB", "GeneC"]
+
+    # Define cell types
+    cell_types = ["Neuron", "Astrocyte", "Microglia"]
+
+    # Define contrasts
+    contrasts = ["Type1", "Type2"]
+
+    # Define vars for each contrast
+    vars_type1 = ["MCI-NCI", "AD-MCI", "AD-NCI"]
+    vars_type2 = ["Amyloid", "Plaq N", "Tangles", "NFT"]
+
+    # Create a data frame with all combinations of gene, cell type, and contrast
+    data = pd.DataFrame(
+        [(gene, cell_type, contrast) for gene in gene_list for cell_type in cell_types for contrast in contrasts],
+        columns=["gene", "Cell_Type", "Group"]
+    )
+
+    # Assign the appropriate vars to each contrast
+    np.random.seed(123)  # Ensure reproducibility
+
+    data_type1 = data[data["Group"] == "Type1"].copy()
+    data_type1["var"] = np.random.choice(vars_type1, size=len(data_type1), replace=True)
+
+    data_type2 = data[data["Group"] == "Type2"].copy()
+    data_type2["var"] = np.random.choice(vars_type2, size=len(data_type2), replace=True)
+
+    # Combine the data
+    data_combined = pd.concat([data_type1, data_type2], ignore_index=True)
+
+    # Assign random values for logFC and adjusted p-values
+    data_combined["logFC"] = np.random.uniform(-2, 2, size=len(data_combined))
+    data_combined["adj_p_value"] = np.random.uniform(0.0001, 0.05, size=len(data_combined))
+
+    return data_combined
