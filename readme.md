@@ -92,6 +92,24 @@ For full documentation and additional examples, please refer to the [documentati
 - **Customization:** Customize plots with titles, labels, and themes.
 - **Integration with plotly and matplotlib:** Leverages the power of `plotly` and `matplotlib` for advanced plotting capabilities.
 
+
+## Citation
+
+If you use this code or the R and python packages for your own work, please cite diceplot as:
+  
+> M. Flotho, P. Flotho, A. Keller, “Diceplot: A package for high dimensional categorical data visualization,” arxiv, 2024. [doi:10.48550/arXiv.2410.23897](https://doi.org/10.48550/arXiv.2410.23897)
+
+BibTeX entry
+```
+@article{flotea2024,
+    author = {Flotho, M. and Flotho, P. and Keller, A.},
+    title = {Diceplot: A package for high dimensional categorical data visualization},
+    year = {2024},
+    journal = {arXiv preprint},
+    doi = {https://doi.org/10.48550/arXiv.2410.23897}
+}
+```
+
 ## Contributing
 
 We welcome contributions from the community! If you'd like to contribute:
