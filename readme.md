@@ -1,5 +1,7 @@
 # pydiceplot
 [![PyPI version](https://badge.fury.io/py/pydiceplot.svg)](https://pypi.org/project/pydiceplot/)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/pydiceplot)
+
 
 The **pyDicePlot** package allows you to create visualizations (dice plots) for datasets with more than two categorical variables and additional continuous variables. This tool is particularly useful for exploring complex categorical data and their relationships with continuous variables.
 
@@ -14,10 +16,21 @@ pip install -r requirements.txt
 Installation via pip
 To install the package via pip, run
 ```bash
-pip install -e .
+pip install pydiceplot
 ```
-from the base directory.
 
+To install the latest version please pull the version from github:
+```bash
+pip install git+https://github.com/maflot/pyDicePlot.git
+python -m example.example
+```
+or install it locally:
+```bash
+git clone https://github.com/maflot/pyDicePlot.git
+cd pyDicePlot
+pip install 
+python -m example.example
+```
 ## Use the dice plots in R
 for using dice plots in R please refer to [DicePlot](https://github.com/maflot/DicePlot/tree/main)
 
