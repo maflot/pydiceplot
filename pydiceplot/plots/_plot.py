@@ -46,7 +46,9 @@ def dice_plot(data,
               max_dice_sides=6,
               cat_a_labs = None,
               cat_b_labs = None,
-              cat_c_labs = None):
+              cat_c_labs = None,
+              fig_width=None,
+              fig_height=None):
     
     fig = DicePlot()
     fig.prepare_plot(data=data,
@@ -62,7 +64,9 @@ def dice_plot(data,
              max_dice_sides=max_dice_sides,
              cat_a_labs=cat_a_labs,
              cat_b_labs=cat_b_labs,
-             cat_c_labs=cat_c_labs)
+             cat_c_labs=cat_c_labs,
+             fig_width=fig_width,
+             fig_height=fig_height)
     return fig
 
 
@@ -148,7 +152,7 @@ if __name__ == "__main__":
 
 
     # Function to create and save dice plots
-    def create_and_save_dice_plot(num_vars, pathology_vars, cat_c_colors, output_str, title):
+    def create_and_save_dice_plot(num_vars, pathology_vars, cat_c_colors, output_str, title, fig_width=None, fig_height=None):
         # Assign groups to pathways
         # Ensure that each pathway has only one group
         pathway_groups = pd.DataFrame({
@@ -204,7 +208,9 @@ if __name__ == "__main__":
             max_dice_sides=6,  # Adjust if needed
             cat_a_labs="Cell Types",
             cat_b_labs="Biological Pathways",
-            cat_c_labs="Pathology Variables"
+            cat_c_labs="Pathology Variables",
+            fig_width=fig_width,
+            fig_height=fig_height
         )
 
         # Optionally display the figure
@@ -212,7 +218,7 @@ if __name__ == "__main__":
         fig.save(plot_path, output_str, formats=".png")
 
 
-    # Example 1: 3 Pathology Variables
+    # Example 1: 3 Pathology Variables with custom dimensions
     pathology_vars_3 = ["Stroke", "Cancer", "Flu"]
     cat_c_colors_3 = {
         "Stroke": "#d5cccd",
@@ -223,11 +229,16 @@ if __name__ == "__main__":
         num_vars=3,
         pathology_vars=pathology_vars_3,
         cat_c_colors=cat_c_colors_3,
-        output_str="dice_plot_3_example",
-        title="Dice Plot with 3 Pathology Variables"
+        output_str="dice_plot_3_custom_size",
+        title="Dice Plot with 3 Pathology Variables (Custom Size)",
+        fig_width=12,  # inches for matplotlib
+        fig_height=8   # inches for matplotlib
     )
 
-    # Example 2: 4 Pathology Variables
+    # Switch to plotly backend for the next example
+    pydiceplot.set_backend("plotly")
+
+    # Example 2: 4 Pathology Variables with custom dimensions in pixels
     pathology_vars_4 = ["Stroke", "Cancer", "Flu", "ADHD"]
     cat_c_colors_4 = {
         "Stroke": "#d5cccd",
@@ -239,43 +250,10 @@ if __name__ == "__main__":
         num_vars=4,
         pathology_vars=pathology_vars_4,
         cat_c_colors=cat_c_colors_4,
-        output_str="dice_plot_4_example",
-        title="Dice Plot with 4 Pathology Variables"
-    )
-
-    # Example 3: 5 Pathology Variables
-    pathology_vars_5 = ["Stroke", "Cancer", "Flu", "ADHD", "Lymphom"]
-    cat_c_colors_5 = {
-        "Stroke": "#d5cccd",
-        "Cancer": "#cb9992",
-        "Flu": "#ad310f",
-        "ADHD": "#7e2a20",
-        "Lymphom": "#FFD700"  # Gold color for Lymphom
-    }
-    create_and_save_dice_plot(
-        num_vars=5,
-        pathology_vars=pathology_vars_5,
-        cat_c_colors=cat_c_colors_5,
-        output_str="dice_plot_5_example",
-        title="Dice Plot with 5 Pathology Variables"
-    )
-
-    # Example 4: 6 Pathology Variables
-    pathology_vars_6 = ["Alzheimer's disease", "Cancer", "Flu", "ADHD", "Age", "Weight"]
-    cat_c_colors_6 = {
-        "Alzheimer's disease": "#d5cccd",
-        "Cancer": "#cb9992",
-        "Flu": "#ad310f",
-        "ADHD": "#7e2a20",
-        "Age": "#FFD700",  # Gold color for Age
-        "Weight": "#FF6622"  # Orange color for Weight
-    }
-    create_and_save_dice_plot(
-        num_vars=6,
-        pathology_vars=pathology_vars_6,
-        cat_c_colors=cat_c_colors_6,
-        output_str="dice_plot_6_example",
-        title="Dice Plot with 6 Pathology Variables"
+        output_str="dice_plot_4_custom_size",
+        title="Dice Plot with 4 Pathology Variables (Custom Size)",
+        fig_width=1200,  # pixels for plotly
+        fig_height=800   # pixels for plotly
     )
 
     print(f"All dice plots have been saved to the '{plot_path}' directory in both HTML and PNG formats.")

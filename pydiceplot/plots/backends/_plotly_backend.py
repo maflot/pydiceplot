@@ -22,12 +22,16 @@ def plot_dice(data,
               max_dice_sides=6,
               cat_a_labs=None,
               cat_b_labs=None,
-              cat_c_labs=None):
+              cat_c_labs=None,
+              fig_width=None,
+              fig_height=None):
     """
     Adapted Plotly-specific dice plot function to resemble Matplotlib's style, with handling for None group.
 
     Parameters:
     - All parameters as defined in _dice_utils.py's preprocess_dice_plot and additional plotting parameters.
+    - fig_width: Optional width of the figure in pixels.
+    - fig_height: Optional height of the figure in pixels.
 
     Returns:
     - fig: Plotly Figure object.
@@ -47,6 +51,14 @@ def plot_dice(data,
 
     # Unpack plot dimensions
     plot_width, plot_height, margins = plot_dimensions
+
+    # Use provided dimensions if specified, otherwise use calculated dimensions
+    if fig_width is not None and fig_height is not None:
+        width = fig_width
+        height = fig_height
+    else:
+        width = plot_width
+        height = plot_height
 
     # Create Plotly figure
     fig = go.Figure()
@@ -113,8 +125,8 @@ def plot_dice(data,
             x=1.05
         ),
         margin=dict(l=100, r=100, t=80, b=100),  # Match Matplotlib-like margins
-        width=plot_width,
-        height=plot_height
+        width=width,
+        height=height
     )
 
     return fig

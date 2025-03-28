@@ -23,12 +23,16 @@ def plot_dice(data,
              max_dice_sides=6,
              cat_a_labs=None,
              cat_b_labs=None,
-             cat_c_labs=None):
+             cat_c_labs=None,
+             fig_width=None,
+             fig_height=None):
     """
     Matplotlib-specific dice plot function.
 
     Parameters:
     - All parameters as defined in _dice_utils.py's preprocess_dice_plot and additional plotting parameters.
+    - fig_width: Optional width of the figure in inches.
+    - fig_height: Optional height of the figure in inches.
 
     Returns:
     - fig: Matplotlib Figure object.
@@ -49,8 +53,14 @@ def plot_dice(data,
     # Unpack plot dimensions
     plot_width, plot_height, margins = plot_dimensions
 
+    # Use provided dimensions if specified, otherwise use calculated dimensions
+    if fig_width is not None and fig_height is not None:
+        figsize = (fig_width, fig_height)
+    else:
+        figsize = (plot_width / 100, plot_height / 100)  # Convert pixels to inches
+
     # Create Matplotlib figure and axes
-    fig, ax = plt.subplots(figsize=(plot_width / 100, plot_height / 100))  # Convert pixels to inches
+    fig, ax = plt.subplots(figsize=figsize)
     ax.set_xlim(0, len(cat_a_order) + 1)
     ax.set_ylim(0, len(cat_b_order) + 1)
 
