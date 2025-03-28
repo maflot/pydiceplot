@@ -20,7 +20,10 @@ def plot_dice(data,
              title=None,
              cat_c_colors=None,
              group_colors=None,
-             max_dice_sides=6):
+             max_dice_sides=6,
+             cat_a_labs=None,
+             cat_b_labs=None,
+             cat_c_labs=None):
     """
     Matplotlib-specific dice plot function.
 
@@ -83,7 +86,11 @@ def plot_dice(data,
     ax.set_yticklabels(cat_b_order)
     ax.invert_yaxis()  # Match Plotly's default orientation
     ax.set_title(title)
-    ax.legend(title=cat_c, bbox_to_anchor=(1.05, 1), loc='upper left')
+    ax.legend(title=cat_c_labs if cat_c_labs else cat_c, bbox_to_anchor=(1.05, 1), loc='upper left')
+    
+    # Set axis labels
+    ax.set_xlabel(cat_a_labs if cat_a_labs else cat_a)
+    ax.set_ylabel(cat_b_labs if cat_b_labs else cat_b)
 
     # Adjust margins
     plt.subplots_adjust(left=0.2, right=0.75, top=0.8, bottom=0.2)
@@ -111,43 +118,34 @@ def plot_domino(data,
                 aspect_ratio=None,
                 base_width=5,
                 base_height=4,
-                title=None):
+                title=None,
+                xlabel=None,
+                ylabel=None):
     """
-    Matplotlib-specific domino plot function, with dynamic scaling for the plot and legend sizes.
+    Matplotlib-specific domino plot function.
 
     Parameters:
-    - All parameters as defined in the domino plot specifications.
+    - All parameters as defined in _domino_utils.py's preprocess_domino_plot and additional plotting parameters.
 
     Returns:
     - fig: Matplotlib Figure object.
     """
     # Preprocess data
-    plot_data, calculated_aspect_ratio, unique_celltypes, unique_genes = preprocess_domino_plot(
-        data,
-        gene_list,
-        spacing_factor,
-        contrast_levels,
-        feature_col,
-        celltype_col,
-        contrast_col,
-        var_id,
-        logfc_col,
-        pval_col,
-        logfc_limits,
-        min_dot_size,
-        max_dot_size
+    plot_data, unique_celltypes, plot_dimensions = preprocess_domino_plot(
+        data, gene_list, spacing_factor, contrast_levels, feature_col, celltype_col, contrast_col,
+        min_dot_size, max_dot_size, logfc_col, pval_col, logfc_limits
     )
 
-    # Dynamically adjust plot size based on number of genes and cell types
-    plot_width = base_width + len(gene_list) * 0.5  # Scale width by the number of genes
-    plot_height = base_height + len(unique_celltypes) * 0.5  # Scale height by the number of cell types
+    # Handle axis switching
+    if switch_axis:
+        plot_data = switch_axes_domino(plot_data, 'matplotlib')
+        unique_celltypes, gene_list = gene_list, unique_celltypes
 
-    # Use provided aspect_ratio if given, else use calculated
-    if aspect_ratio is None:
-        aspect_ratio = calculated_aspect_ratio
+    # Unpack plot dimensions
+    plot_width, plot_height, margins = plot_dimensions
 
-    # Create Matplotlib figure and axes with dynamically scaled size
-    fig, ax = plt.subplots(figsize=(plot_width, plot_height))
+    # Create Matplotlib figure and axes
+    fig, ax = plt.subplots(figsize=(plot_width / 100, plot_height / 100))
 
     # Add rectangles for each gene-celltype pair
     unique_pairs = plot_data[[feature_col, celltype_col]].drop_duplicates()
@@ -191,40 +189,26 @@ def plot_domino(data,
     cbar.set_label(color_scale_name)
     sc.set_clim(logfc_limits)
 
-    # Adjust font sizes dynamically based on plot size
-    ax.set_title(title, fontsize=axis_text_size + len(gene_list) * 0.2)  # Dynamically scale the title size
-    ax.set_xlabel('Genes' if not switch_axis else 'Cell Types', fontsize=axis_text_size)
-    ax.set_ylabel('Cell Types' if not switch_axis else 'Genes', fontsize=axis_text_size)
-
-    # Adjust ticks based on number of genes and cell types
-    ax.set_xticks([(i * spacing_factor) + 1.5 for i in range(len(gene_list))])
-    ax.set_xticklabels(gene_list, rotation=90, fontsize=axis_text_size)
-    ax.set_yticks([i + 1 for i in range(len(unique_celltypes))])
-    ax.set_yticklabels(unique_celltypes, fontsize=axis_text_size)
-    ax.set_xlim(0, (len(gene_list) - 1) * spacing_factor + 3)
+    # Set axis limits and labels
+    ax.set_xlim(0, len(gene_list) * spacing_factor + 2)
     ax.set_ylim(0, len(unique_celltypes) + 1)
+    ax.set_xticks([(i * spacing_factor) + 1.5 for i in range(len(gene_list))])
+    ax.set_xticklabels(gene_list)
+    ax.set_yticks(range(1, len(unique_celltypes) + 1))
+    ax.set_yticklabels(unique_celltypes)
+    ax.invert_yaxis()
 
-    # Add annotations for contrasts
-    for idx, label in enumerate(contrast_labels):
-        x_pos = (idx * spacing_factor) + 1.5
-        ax.text(
-            x_pos,
-            len(unique_celltypes) + 1,
-            label,
-            ha='center',
-            va='bottom',
-            fontsize=axis_text_size
-        )
+    # Set axis labels and title
+    ax.set_xlabel(xlabel if xlabel else ('Genes' if not switch_axis else 'Cell Types'))
+    ax.set_ylabel(ylabel if ylabel else ('Cell Types' if not switch_axis else 'Genes'))
+    ax.set_title(title)
 
-    # Apply axis switching if needed
-    if switch_axis:
-        fig = switch_axes_domino(fig, backend='matplotlib')
-
-    # Adjust aspect ratio
-    ax.set_aspect(aspect_ratio)
+    # Adjust font sizes dynamically based on plot size
+    ax.tick_params(axis='both', which='major', labelsize=axis_text_size)
+    ax.tick_params(axis='both', which='minor', labelsize=axis_text_size)
 
     # Adjust layout
-    plt.tight_layout()
+    plt.subplots_adjust(left=0.2, right=0.8, top=0.9, bottom=0.1)
 
     return fig
 

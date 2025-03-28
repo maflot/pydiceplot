@@ -19,7 +19,10 @@ def plot_dice(data,
               title=None,
               cat_c_colors=None,
               group_colors=None,
-              max_dice_sides=6):
+              max_dice_sides=6,
+              cat_a_labs=None,
+              cat_b_labs=None,
+              cat_c_labs=None):
     """
     Adapted Plotly-specific dice plot function to resemble Matplotlib's style, with handling for None group.
 
@@ -86,14 +89,16 @@ def plot_dice(data,
         range=[0, len(cat_a_order) + 1],
         tickvals=list(range(1, len(cat_a_order) + 1)),
         ticktext=cat_a_order,
-        showgrid=False
+        showgrid=False,
+        title_text=cat_a_labs if cat_a_labs else cat_a
     )
     fig.update_yaxes(
         range=[0, len(cat_b_order) + 1],
         tickvals=list(range(1, len(cat_b_order) + 1)),
         ticktext=cat_b_order,
         autorange="reversed",  # Invert y-axis to match Matplotlib
-        showgrid=False
+        showgrid=False,
+        title_text=cat_b_labs if cat_b_labs else cat_b
     )
 
     # Update layout to simplify the style and match Matplotlib's
@@ -101,7 +106,7 @@ def plot_dice(data,
         plot_bgcolor='white',
         title=title,
         legend=dict(
-            title=cat_c,
+            title=cat_c_labs if cat_c_labs else cat_c,
             yanchor='top',
             y=1,
             xanchor='left',
@@ -135,36 +140,31 @@ def plot_domino(data,
                 aspect_ratio=None,
                 base_width=5,
                 base_height=4,
-                title=None):
+                title=None,
+                xlabel=None,
+                ylabel=None):
     """
     Plotly-specific domino plot function.
 
     Parameters:
-    - All parameters as defined in the domino plot specifications.
+    - All parameters as defined in _domino_utils.py's preprocess_domino_plot and additional plotting parameters.
 
     Returns:
     - fig: Plotly Figure object.
     """
     # Preprocess data
-    plot_data, calculated_aspect_ratio, unique_celltypes, unique_genes = preprocess_domino_plot(
-        data,
-        gene_list,
-        spacing_factor,
-        contrast_levels,
-        feature_col,
-        celltype_col,
-        contrast_col,
-        var_id,
-        logfc_col,
-        pval_col,
-        logfc_limits,
-        min_dot_size,
-        max_dot_size
+    plot_data, unique_celltypes, plot_dimensions = preprocess_domino_plot(
+        data, gene_list, spacing_factor, contrast_levels, feature_col, celltype_col, contrast_col,
+        min_dot_size, max_dot_size, logfc_col, pval_col, logfc_limits
     )
 
-    # Use provided aspect_ratio if given, else use calculated
-    if aspect_ratio is None:
-        aspect_ratio = calculated_aspect_ratio
+    # Handle axis switching
+    if switch_axis:
+        plot_data = switch_axes_domino(plot_data, 'plotly')
+        unique_celltypes, gene_list = gene_list, unique_celltypes
+
+    # Unpack plot dimensions
+    plot_width, plot_height, margins = plot_dimensions
 
     # Create Plotly figure
     fig = go.Figure()
@@ -215,45 +215,31 @@ def plot_domino(data,
         showlegend=False
     ))
 
-    # Update layout
-    fig.update_layout(
-        title=title,
-        xaxis=dict(
-            title='Genes',
-            tickmode='array',
-            tickvals=[(i * spacing_factor) + 1.5 for i in range(len(gene_list))],
-            ticktext=gene_list,
-            showgrid=True
-        ),
-        yaxis=dict(
-            title='Cell Types',
-            tickmode='array',
-            tickvals=[i + 1 for i in range(len(unique_celltypes))],
-            ticktext=unique_celltypes,
-            showgrid=True
-        ),
-        width=base_width * 100,
-        height=base_height * 100,
-        margin=dict(l=50, r=200, t=100, b=50),
-        aspectratio=dict(x=1, y=aspect_ratio)
+    # Set axis limits and labels
+    fig.update_xaxes(
+        range=[0, len(gene_list) * spacing_factor + 2],
+        tickvals=[(i * spacing_factor) + 1.5 for i in range(len(gene_list))],
+        ticktext=gene_list,
+        showgrid=False,
+        title_text=xlabel if xlabel else ('Genes' if not switch_axis else 'Cell Types')
+    )
+    fig.update_yaxes(
+        range=[0, len(unique_celltypes) + 1],
+        tickvals=list(range(1, len(unique_celltypes) + 1)),
+        ticktext=unique_celltypes,
+        autorange="reversed",
+        showgrid=False,
+        title_text=ylabel if ylabel else ('Cell Types' if not switch_axis else 'Genes')
     )
 
-    # Add contrast annotations
-    for idx, label in enumerate(contrast_labels):
-        x_pos = (idx * spacing_factor) + 1.5
-        fig.add_annotation(
-            x=x_pos,
-            y=len(unique_celltypes) + 1,
-            text=label,
-            showarrow=False,
-            xanchor='center',
-            yanchor='bottom',
-            font=dict(size=axis_text_size)
-        )
-
-    # Apply axis switching if needed
-    if switch_axis:
-        fig = switch_axes_domino(fig, backend='plotly')
+    # Update layout
+    fig.update_layout(
+        plot_bgcolor='white',
+        title=title,
+        margin=margins,
+        width=plot_width,
+        height=plot_height
+    )
 
     return fig
 

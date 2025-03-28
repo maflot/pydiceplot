@@ -43,7 +43,11 @@ def dice_plot(data,
               title=None,
               cat_c_colors=None,
               group_colors=None,
-              max_dice_sides=6):
+              max_dice_sides=6,
+              cat_a_labs = None,
+              cat_b_labs = None,
+              cat_c_labs = None):
+    
     fig = DicePlot()
     fig.prepare_plot(data=data,
              cat_a=cat_a,
@@ -55,7 +59,10 @@ def dice_plot(data,
              title=title,
              cat_c_colors=cat_c_colors,
              group_colors=group_colors,
-             max_dice_sides=max_dice_sides)
+             max_dice_sides=max_dice_sides,
+             cat_a_labs=cat_a_labs,
+             cat_b_labs=cat_b_labs,
+             cat_c_labs=cat_c_labs)
     return fig
 
 
@@ -80,7 +87,9 @@ def domino_plot(data,
                 aspect_ratio=None,
                 base_width=5,
                 base_height=4,
-                title=None):
+                title=None,
+                xlabel=None,
+                ylabel=None):
     plot = DominoPlot()
 
     plot.prepare_plot(
@@ -105,7 +114,9 @@ def domino_plot(data,
         aspect_ratio=aspect_ratio,
         base_width=base_width,
         base_height=base_height,
-        title=title
+        title=title,
+        xlabel=xlabel,
+        ylabel=ylabel
     )
 
     return plot
@@ -190,7 +201,10 @@ if __name__ == "__main__":
             title=title,
             cat_c_colors=cat_c_colors,
             group_colors=group_colors,
-            max_dice_sides=6  # Adjust if needed
+            max_dice_sides=6,  # Adjust if needed
+            cat_a_labs="Cell Types",
+            cat_b_labs="Biological Pathways",
+            cat_c_labs="Pathology Variables"
         )
 
         # Optionally display the figure
