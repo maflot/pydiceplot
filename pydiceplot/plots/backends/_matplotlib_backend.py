@@ -122,7 +122,7 @@ def plot_domino(data,
                 logfc_col="avg_log2FC",
                 pval_col="p_val_adj",
                 logfc_limits=(-1.5, 1.5),
-                logfc_colors={"low": "blue", "mid": "white", "high": "red"},
+                logfc_colors=None,
                 color_scale_name="Log2 Fold Change",
                 axis_text_size=8,
                 aspect_ratio=None,
@@ -141,9 +141,9 @@ def plot_domino(data,
     - fig: Matplotlib Figure object.
     """
     # Preprocess data
-    plot_data, unique_celltypes, plot_dimensions = preprocess_domino_plot(
+    plot_data, aspect_ratio, unique_celltypes, unique_genes, logfc_colors = preprocess_domino_plot(
         data, gene_list, spacing_factor, contrast_levels, feature_col, celltype_col, contrast_col,
-        min_dot_size, max_dot_size, logfc_col, pval_col, logfc_limits
+        var_id, logfc_col, pval_col, logfc_limits, min_dot_size, max_dot_size, logfc_colors
     )
 
     # Handle axis switching
@@ -151,11 +151,8 @@ def plot_domino(data,
         plot_data = switch_axes_domino(plot_data, 'matplotlib')
         unique_celltypes, gene_list = gene_list, unique_celltypes
 
-    # Unpack plot dimensions
-    plot_width, plot_height, margins = plot_dimensions
-
     # Create Matplotlib figure and axes
-    fig, ax = plt.subplots(figsize=(plot_width / 100, plot_height / 100))
+    fig, ax = plt.subplots(figsize=(base_width, base_height))
 
     # Add rectangles for each gene-celltype pair
     unique_pairs = plot_data[[feature_col, celltype_col]].drop_duplicates()
@@ -184,13 +181,18 @@ def plot_domino(data,
             )
             ax.add_patch(rect)
 
+    # Create custom colormap for log fold change
+    from matplotlib.colors import LinearSegmentedColormap
+    colors = [(0, logfc_colors['low']), (0.5, logfc_colors['mid']), (1, logfc_colors['high'])]
+    cmap = LinearSegmentedColormap.from_list('custom', colors)
+
     # Add scatter points with dynamic marker size
     sc = ax.scatter(
         plot_data['x_pos'],
         plot_data['y_pos'],
         s=plot_data['size'] * 20,  # Adjust marker size
         c=plot_data['adj_logfc'],
-        cmap='RdBu_r',
+        cmap=cmap,
         edgecolors='black'
     )
 

@@ -3,6 +3,8 @@ import numpy as np
 import warnings
 from scipy.spatial.distance import pdist
 from scipy.cluster.hierarchy import linkage, dendrogram
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 def prepare_data(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors):
     """
@@ -189,7 +191,7 @@ def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group=None, cat_c_colors=Non
     - data: DataFrame containing the necessary variables.
     - cat_a, cat_b, cat_c: Column names for categories.
     - group: Optional, column name for grouping (can be None).
-    - cat_c_colors, group_colors: Dictionaries for category colors.
+    - cat_c_colors, group_colors: Dictionaries for category colors (if None, will generate automatically).
     - max_dice_sides: Maximum number of dice sides.
 
     Returns:
@@ -200,6 +202,15 @@ def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group=None, cat_c_colors=Non
     - var_positions: DataFrame with variable positions.
     - plot_dimensions: Tuple with plot width, height, and margins.
     """
+    # Generate automatic colors if none provided
+    if cat_c_colors is None:
+        unique_cat_c = sorted(data[cat_c].unique())
+        cat_c_colors = dict(zip(unique_cat_c, generate_automatic_colors(len(unique_cat_c))))
+    
+    if group is not None and group_colors is None:
+        unique_groups = sorted(data[group].unique())
+        group_colors = dict(zip(unique_groups, generate_automatic_colors(len(unique_groups))))
+
     # Prepare data and ensure consistent ordering
     data, cat_a_order, cat_b_order = prepare_data(
         data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors
@@ -328,25 +339,46 @@ def get_diceplot_example_data(n):
     return data_expanded
 
 
+def generate_automatic_colors(n_colors):
+    """
+    Generates a list of distinct colors using matplotlib's color cycle.
+    
+    Parameters:
+    - n_colors: Number of colors to generate.
+    
+    Returns:
+    - colors: List of hex color codes.
+    """
+    # Get the default color cycle
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colors = prop_cycle.by_key()['color']
+    
+    # If we need more colors than in the default cycle, generate additional ones
+    if n_colors > len(colors):
+        # Generate additional colors using a different colormap
+        additional_colors = plt.cm.Set3(np.linspace(0, 1, n_colors - len(colors)))
+        colors.extend([mcolors.to_hex(color) for color in additional_colors])
+    
+    # Return exactly n_colors
+    return colors[:n_colors]
+
 def get_example_group_colors():
     """
-        Returns a Colorpalette fitting the example dataframe
+    Returns example group colors for testing.
     """
     return {
-        "Linked": "#333333",
-        "UnLinked": "#888888",
-        "Other": "#DDDDDD"
+        'Group1': '#1f77b4',
+        'Group2': '#ff7f0e',
+        'Group3': '#2ca02c'
     }
 
 def get_example_cat_c_colors():
     """
-        Returns a Colorpalette fitting the example dataframe
+    Returns example cat_c colors for testing.
     """
     return {
-        "Alzheimer's disease": "#d5cccd",
-        "Cancer": "#cb9992",
-        "Flu": "#ad310f",
-        "ADHD": "#7e2a20",
-        "Age": "#FFD700",
-        "Weight": "#FF6622"
+        'Var1': '#1f77b4',
+        'Var2': '#ff7f0e',
+        'Var3': '#2ca02c',
+        'Var4': '#d62728'
     }

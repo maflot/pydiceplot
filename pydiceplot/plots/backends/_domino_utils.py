@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 def filter_genes_domino(data, gene_list, feature_col):
     """
@@ -172,6 +174,20 @@ def switch_axes_domino(fig, backend):
         ax.invert_yaxis()
     return fig
 
+def generate_logfc_colors():
+    """
+    Generates a color dictionary for log fold change values.
+    
+    Returns:
+    - dict: Dictionary with 'low', 'mid', and 'high' color keys.
+    """
+    # Use a diverging colormap (RdBu) for log fold change
+    cmap = plt.cm.RdBu
+    return {
+        'low': mcolors.to_hex(cmap(0.0)),    # Blue for negative values
+        'mid': mcolors.to_hex(cmap(0.5)),    # White for zero
+        'high': mcolors.to_hex(cmap(1.0))    # Red for positive values
+    }
 
 def preprocess_domino_plot(data,
                            gene_list,
@@ -185,7 +201,8 @@ def preprocess_domino_plot(data,
                            pval_col,
                            logfc_limits,
                            min_dot_size,
-                           max_dot_size):
+                           max_dot_size,
+                           logfc_colors=None):
     """
     Preprocesses data for domino plot generation.
 
@@ -203,13 +220,19 @@ def preprocess_domino_plot(data,
     - logfc_limits (tuple): Limits for log fold change values.
     - min_dot_size (float): Minimum dot size.
     - max_dot_size (float): Maximum dot size.
+    - logfc_colors (dict): Dictionary of colors for log fold change values (if None, will generate automatically).
 
     Returns:
     - plot_data (pd.DataFrame): Data prepared for plotting.
     - aspect_ratio (float): Calculated aspect ratio for the plot.
     - unique_celltypes (list): List of unique cell types.
     - unique_genes (list): List of unique genes.
+    - logfc_colors (dict): Dictionary of colors for log fold change values.
     """
+    # Generate automatic colors if none provided
+    if logfc_colors is None:
+        logfc_colors = generate_logfc_colors()
+
     # Filter genes
     data_filtered = filter_genes_domino(data, gene_list, feature_col)
 
@@ -237,7 +260,7 @@ def preprocess_domino_plot(data,
     unique_genes = gene_list  # Since gene_list is already ordered
     unique_celltypes = plot_data[celltype_col].cat.categories.tolist()
 
-    return plot_data, aspect_ratio, unique_celltypes, unique_genes
+    return plot_data, aspect_ratio, unique_celltypes, unique_genes, logfc_colors
 
 
 # Utility function to generate the example data

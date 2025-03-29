@@ -65,8 +65,12 @@ def plot_dice(data,
 
     # Add rectangles for the boxes
     for _, row in box_data.iterrows():
-        # If group is None, use white color for the boxes, otherwise use group_colors
-        fill_color = "#FFFFFF" if group is None else group_colors.get(row[group], "#FFFFFF")
+        # If group is None or group_colors is None, use white color for the boxes
+        if group is None or group_colors is None:
+            fill_color = "#FFFFFF"
+        else:
+            fill_color = group_colors.get(row[group], "#FFFFFF")
+            
         fig.add_shape(
             type="rect",
             x0=row['x_min'],
@@ -80,6 +84,12 @@ def plot_dice(data,
         )
 
     # Add scatter points for the PathologyVariables
+    # Get unique values from cat_c if cat_c_colors is None
+    if cat_c_colors is None:
+        unique_vars = sorted(plot_data[cat_c].unique())
+        from ._dice_utils import generate_automatic_colors
+        cat_c_colors = dict(zip(unique_vars, generate_automatic_colors(len(unique_vars))))
+
     for var, color in cat_c_colors.items():
         var_data = plot_data[plot_data[cat_c] == var]
         fig.add_trace(go.Scatter(
@@ -146,7 +156,7 @@ def plot_domino(data,
                 logfc_col="avg_log2FC",
                 pval_col="p_val_adj",
                 logfc_limits=(-1.5, 1.5),
-                logfc_colors={"low": "blue", "mid": "white", "high": "red"},
+                logfc_colors=None,
                 color_scale_name="Log2 Fold Change",
                 axis_text_size=8,
                 aspect_ratio=None,
@@ -165,18 +175,15 @@ def plot_domino(data,
     - fig: Plotly Figure object.
     """
     # Preprocess data
-    plot_data, unique_celltypes, plot_dimensions = preprocess_domino_plot(
+    plot_data, aspect_ratio, unique_celltypes, unique_genes, logfc_colors = preprocess_domino_plot(
         data, gene_list, spacing_factor, contrast_levels, feature_col, celltype_col, contrast_col,
-        min_dot_size, max_dot_size, logfc_col, pval_col, logfc_limits
+        var_id, logfc_col, pval_col, logfc_limits, min_dot_size, max_dot_size, logfc_colors
     )
 
     # Handle axis switching
     if switch_axis:
         plot_data = switch_axes_domino(plot_data, 'plotly')
         unique_celltypes, gene_list = gene_list, unique_celltypes
-
-    # Unpack plot dimensions
-    plot_width, plot_height, margins = plot_dimensions
 
     # Create Plotly figure
     fig = go.Figure()
@@ -248,9 +255,8 @@ def plot_domino(data,
     fig.update_layout(
         plot_bgcolor='white',
         title=title,
-        margin=margins,
-        width=plot_width,
-        height=plot_height
+        width=base_width * 100,  # Convert inches to pixels
+        height=base_height * 100  # Convert inches to pixels
     )
 
     return fig
