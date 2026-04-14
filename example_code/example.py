@@ -24,7 +24,6 @@ from pydiceplot.plots.backends._dice_utils import (
 from . import (
     oral_microbiome,
     oral_microbiome_fill_only,
-    oral_microbiome_large,
     mirna_direction,
     zebra_domino,
     pathways_nine,
@@ -85,7 +84,6 @@ if __name__ == "__main__":
     # ggdiceplot demo ports
     oral_microbiome.run(IMAGES_DIR)
     oral_microbiome_fill_only.run(IMAGES_DIR)
-    oral_microbiome_large.run(IMAGES_DIR)
     mirna_direction.run(IMAGES_DIR)
     zebra_domino.run(IMAGES_DIR)
 
