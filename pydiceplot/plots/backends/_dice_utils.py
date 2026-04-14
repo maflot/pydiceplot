@@ -1,384 +1,234 @@
-import pandas as pd
-import numpy as np
-import warnings
-from scipy.spatial.distance import pdist
-from scipy.cluster.hierarchy import linkage, dendrogram
-import matplotlib.pyplot as plt
+"""
+Preprocessing for dice plots.
+
+Produces a backend-agnostic `DicePlotData` record that the matplotlib and
+plotly backends both consume. Supports three mutually-exclusive input modes
+(matching kuva's `DicePlot::with_records`, `with_dot_data`, `with_points`):
+
+- **Categorical**: `cat_c_colors` supplied → each pip is either present with
+  a fixed color or absent. One row per (x, y, cat_c) in `data`.
+- **Per-dot continuous**: `fill_col` and/or `size_col` given → each pip
+  encodes continuous fill and/or size. One row per (x, y, cat_c).
+- **Tile-level** (less common): a single continuous value per (x, y) tile
+  with no per-pip encoding. Not auto-detected; request via `tile_fill_col`.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import List, Optional, Sequence
+
 import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
-def prepare_data(data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors):
+
+@dataclass
+class DicePoint:
+    x_cat: str
+    y_cat: str
+    dot_colors: List[Optional[str]] = field(default_factory=list)   # categorical
+    dot_fills:  List[Optional[float]] = field(default_factory=list) # per-pip continuous
+    dot_sizes:  List[Optional[float]] = field(default_factory=list) # per-pip continuous
+    tile_fill:  Optional[float] = None                              # tile-level
+
+
+@dataclass
+class DicePlotData:
+    points: List[DicePoint]
+    x_categories: List[str]
+    y_categories: List[str]
+    category_labels: List[str]   # cat_c labels (pip slot labels)
+    cat_c_colors: Optional[dict] = None
+    ndots: int = 0
+    mode: str = "categorical"    # "categorical" | "per_dot" | "tile"
+    fill_extent: Optional[tuple] = None
+    size_extent: Optional[tuple] = None
+
+    @property
+    def n_x(self) -> int: return len(self.x_categories)
+
+    @property
+    def n_y(self) -> int: return len(self.y_categories)
+
+
+def _sorted_unique(series: pd.Series) -> List[str]:
+    if isinstance(series.dtype, pd.CategoricalDtype):
+        return list(series.cat.categories)
+    return sorted(series.dropna().unique().tolist())
+
+
+def preprocess_dice_plot(
+    data: pd.DataFrame,
+    cat_a: str,
+    cat_b: str,
+    cat_c: str,
+    cat_c_colors: Optional[dict] = None,
+    fill_col: Optional[str] = None,
+    size_col: Optional[str] = None,
+    cat_a_order: Optional[Sequence[str]] = None,
+    cat_b_order: Optional[Sequence[str]] = None,
+    max_dice_sides: int = 6,
+) -> DicePlotData:
+    """Turn long-format `data` into a `DicePlotData` ready for rendering.
+
+    Parameters
+    ----------
+    data : DataFrame with columns `cat_a`, `cat_b`, `cat_c` (+ optional
+        `fill_col`, `size_col`). One row per present pip slot.
+    cat_c_colors : dict mapping cat_c label → hex color. If provided, the
+        plot is categorical (pips coloured by `cat_c`). The dict key order
+        determines the pip slot order.
+    fill_col, size_col : column names for continuous per-pip encoding.
+        Providing either switches the plot to per-dot mode.
     """
-    Prepares the data by setting categorical variables and ordering factors.
+    missing = [c for c in (cat_a, cat_b, cat_c) if c not in data.columns]
+    if missing:
+        raise KeyError(f"dice_plot: columns missing from data: {missing}")
 
-    Parameters:
-    - data: DataFrame containing the necessary variables.
-    - cat_a, cat_b, cat_c, group: Column names for categories and grouping.
-    - cat_c_colors, group_colors: Dictionaries for category colors.
+    if fill_col is not None and fill_col not in data.columns:
+        raise KeyError(f"dice_plot: fill_col '{fill_col}' not in data")
+    if size_col is not None and size_col not in data.columns:
+        raise KeyError(f"dice_plot: size_col '{size_col}' not in data")
 
-    Returns:
-    - data: Updated DataFrame with categorical types.
-    - cat_a_order: List of ordered categories for cat_a.
-    - cat_b_order: List of ordered categories for cat_b.
-    """
-    # Ensure consistent ordering of factors
-    data[cat_a] = pd.Categorical(
-        data[cat_a],
-        categories=sorted(data[cat_a].unique()),
-        ordered=True
-    )
-    data[cat_b] = pd.Categorical(
-        data[cat_b],
-        categories=sorted(data[cat_b].unique()),
-        ordered=True
-    )
-    data[cat_c] = pd.Categorical(
-        data[cat_c],
-        categories=list(cat_c_colors.keys()),
-        ordered=True
-    )
-    if group is not None:
-        data[group] = pd.Categorical(
-        data[group],
-        categories=list(group_colors.keys()),
-        ordered=True
+    per_dot_mode = fill_col is not None or size_col is not None
+    mode = "per_dot" if per_dot_mode else "categorical"
+
+    # ── Determine category orders ──────────────────────────────────────────
+    if cat_a_order is None:
+        cat_a_order = _sorted_unique(data[cat_a])
+    if cat_b_order is None:
+        cat_b_order = _sorted_unique(data[cat_b])
+
+    if cat_c_colors is not None:
+        category_labels = list(cat_c_colors.keys())
+    else:
+        category_labels = _sorted_unique(data[cat_c])
+
+    ndots = len(category_labels)
+    if ndots < 1 or ndots > max_dice_sides:
+        raise ValueError(
+            f"dice_plot: number of cat_c categories ({ndots}) must be in "
+            f"1..{max_dice_sides}"
         )
 
-    cat_a_order = data[cat_a].cat.categories.tolist()
-    cat_b_order = data[cat_b].cat.categories.tolist()
+    # Auto-generate categorical colors when not supplied (and in categorical mode)
+    if mode == "categorical" and cat_c_colors is None:
+        cat_c_colors = dict(zip(category_labels, generate_automatic_colors(ndots)))
 
-    return data, cat_a_order, cat_b_order
+    # ── Build per-tile DicePoint records ───────────────────────────────────
+    slot_index = {label: i for i, label in enumerate(category_labels)}
 
-def create_binary_matrix(data, cat_a, cat_b, cat_c):
-    """
-    Creates a binary matrix for clustering.
+    # Warn (don't crash) on rows whose cat_c isn't in the slot list
+    valid = data[cat_c].isin(category_labels)
+    if not valid.all():
+        dropped = data.loc[~valid, cat_c].unique().tolist()
+        import warnings
+        warnings.warn(
+            f"dice_plot: dropping rows with cat_c values not in category_labels: {dropped}"
+        )
+        data = data.loc[valid]
 
-    Parameters:
-    - data: DataFrame containing the necessary variables.
-    - cat_a, cat_b, cat_c: Column names for categories.
-
-    Returns:
-    - binary_matrix_df: Binary matrix DataFrame.
-    """
-    data['present'] = 1
-    grouped = data.groupby([cat_a, cat_b, cat_c])['present'].sum().reset_index()
-    grouped['combined'] = grouped[cat_b].astype(str) + "_" + grouped[cat_c].astype(str)
-    binary_matrix_df = grouped.pivot(
-        index=cat_a,
-        columns='combined',
-        values='present'
-    ).fillna(0)
-    return binary_matrix_df
-
-def perform_clustering(data, cat_a, cat_b, cat_c, group):
-    """
-    Performs hierarchical clustering on the data to order cat_b within each group.
-
-    Parameters:
-    - data: DataFrame containing the necessary variables.
-    - cat_a, cat_b, cat_c, group: Column names for categories.
-    - cluster_on: Specify whether to cluster on 'cat_a' or 'cat_b'.
-
-    Returns:
-    - cat_order: List of ordered categories for cat_b based on clustering within groups.
-    """
-    cat_order = []
-    groups = data[group].cat.categories.tolist()
-    for grp in groups:
-        data_grp = data[data[group] == grp]
-        # Create a binary matrix for clustering within the group
-        # Pivot the data to have 'cat_b' as rows
-        data_grp['present'] = 1
-        grouped = data_grp.groupby([cat_b, cat_a, cat_c])['present'].sum().reset_index()
-        grouped['combined'] = grouped[cat_a].astype(str) + "_" + grouped[cat_c].astype(str)
-        binary_matrix_df = grouped.pivot(
-            index=cat_b,
-            columns='combined',
-            values='present'
-        ).fillna(0)
-        binary_matrix = binary_matrix_df.values
-
-        # Perform hierarchical clustering within the group
-        cat_b_list = binary_matrix_df.index.tolist()
-        if binary_matrix.shape[0] > 1:
-            distance_matrix = pdist(binary_matrix, metric='jaccard')
-            Z = linkage(distance_matrix, method='ward')
-            dendro = dendrogram(Z, labels=cat_b_list, no_plot=True)
-            cat_grp_order = dendro['ivl']  # No need to reverse for rows
+    # Aggregate rows into points keyed by (x_cat, y_cat)
+    points_map: dict[tuple, DicePoint] = {}
+    for _, row in data.iterrows():
+        key = (row[cat_a], row[cat_b])
+        pt = points_map.get(key)
+        if pt is None:
+            pt = DicePoint(
+                x_cat=row[cat_a],
+                y_cat=row[cat_b],
+                dot_colors=[None] * ndots,
+                dot_fills=[None] * ndots,
+                dot_sizes=[None] * ndots,
+            )
+            points_map[key] = pt
+        slot = slot_index[row[cat_c]]
+        if mode == "categorical":
+            pt.dot_colors[slot] = cat_c_colors[row[cat_c]]
         else:
-            cat_grp_order = cat_b_list
+            if fill_col is not None:
+                v = row[fill_col]
+                pt.dot_fills[slot] = float(v) if pd.notna(v) else None
+            if size_col is not None:
+                v = row[size_col]
+                pt.dot_sizes[slot] = float(v) if pd.notna(v) else None
 
-        cat_order.extend(cat_grp_order)
+    points = list(points_map.values())
 
-    # Remove duplicates while preserving order
-    from collections import OrderedDict
-    cat_order = list(OrderedDict.fromkeys(cat_order))
+    # ── Compute extents for continuous encodings ──────────────────────────
+    fill_extent = None
+    size_extent = None
+    if mode == "per_dot":
+        all_fills = [v for p in points for v in p.dot_fills if v is not None]
+        all_sizes = [v for p in points for v in p.dot_sizes if v is not None]
+        if all_fills:
+            fill_extent = (float(min(all_fills)), float(max(all_fills)))
+        if all_sizes:
+            size_extent = (float(min(all_sizes)), float(max(all_sizes)))
 
-    return cat_order
-
-def calculate_var_positions(cat_c_colors, max_dice_sides):
-    """
-    Calculates positions for dice sides based on the number of variables.
-
-    Parameters:
-    - cat_c_colors: Dictionary of colors for cat_c variables.
-    - max_dice_sides: Maximum number of dice sides (1-6).
-
-    Returns:
-    - var_positions: DataFrame with variable positions.
-    """
-    num_vars = len(cat_c_colors)
-    if num_vars > max_dice_sides:
-        raise ValueError(f"Number of variables ({num_vars}) exceeds max_dice_sides ({max_dice_sides}).")
-
-    # Define positions for up to 6 sides (dice faces)
-    positions_dict = {
-        1: [(0, 0)],
-        2: [(-0.2, 0), (0.2, 0)],
-        3: [(-0.2, -0.2), (0, 0.2), (0.2, -0.2)],
-        4: [(-0.2, -0.2), (-0.2, 0.2), (0.2, -0.2), (0.2, 0.2)],
-        5: [(-0.2, -0.2), (-0.2, 0.2), (0, 0), (0.2, -0.2), (0.2, 0.2)],
-        6: [(-0.2, -0.3), (-0.2, 0), (-0.2, 0.3), (0.2, -0.3), (0.2, 0), (0.2, 0.3)]
-    }
-
-    positions = positions_dict[num_vars]
-    var_positions = pd.DataFrame({
-        'var': list(cat_c_colors.keys()),
-        'x_offset': [pos[0] for pos in positions],
-        'y_offset': [pos[1] for pos in positions]
-    })
-    return var_positions
-
-def generate_plot_dimensions(n_x, n_y, n_dice):
-    """
-    Generates plot dimensions to make boxes square, adjusting size based on the number of dice sides.
-
-    Parameters:
-    - n_x: Number of categories along the x-axis.
-    - n_y: Number of categories along the y-axis.
-    - n_dice: Number of sides (eyes) the dice is showing.
-
-    Returns:
-    - plot_width: Width of the plot in pixels.
-    - plot_height: Height of the plot in pixels.
-    - margins: Dictionary with plot margins.
-    """
-    # Base box size
-    base_box_size = 50  # pixels per box
-
-    # Adjust box size based on n_dice
-    # Increase box size slightly for higher n_dice to accommodate more details
-    box_size = base_box_size + (n_dice - 1) * 5
-
-    # Adjust margins based on n_dice
-    # Larger n_dice might require more space for labels and dice representation
-    margin_l = 150 + (n_dice - 1) * 10
-    margin_r = 300 + (n_dice - 1) * 10
-    margin_t = 100 + (n_dice - 1) * 10
-    margin_b = 200 + (n_dice - 1) * 10
-
-    # Calculate plot dimensions
-    plot_width = box_size * n_x + margin_l + margin_r
-    plot_height = box_size * n_y + margin_t + margin_b
-    margins = dict(l=margin_l, r=margin_r, t=margin_t, b=margin_b)
-    return plot_width, plot_height, margins
-
-
-def preprocess_dice_plot(data, cat_a, cat_b, cat_c, group=None, cat_c_colors=None, group_colors=None, max_dice_sides=6):
-    """
-    Preprocesses data for dice plot generation with handling for None group.
-
-    Parameters:
-    - data: DataFrame containing the necessary variables.
-    - cat_a, cat_b, cat_c: Column names for categories.
-    - group: Optional, column name for grouping (can be None).
-    - cat_c_colors, group_colors: Dictionaries for category colors (if None, will generate automatically).
-    - max_dice_sides: Maximum number of dice sides.
-
-    Returns:
-    - plot_data: DataFrame prepared for plotting.
-    - box_data: DataFrame with box dimensions.
-    - cat_a_order: Ordered categories for cat_a.
-    - cat_b_order: Ordered categories for cat_b.
-    - var_positions: DataFrame with variable positions.
-    - plot_dimensions: Tuple with plot width, height, and margins.
-    """
-    # Generate automatic colors if none provided
-    if cat_c_colors is None:
-        unique_cat_c = sorted(data[cat_c].unique())
-        cat_c_colors = dict(zip(unique_cat_c, generate_automatic_colors(len(unique_cat_c))))
-    
-    if group is not None and group_colors is None:
-        unique_groups = sorted(data[group].unique())
-        group_colors = dict(zip(unique_groups, generate_automatic_colors(len(unique_groups))))
-
-    # Prepare data and ensure consistent ordering
-    data, cat_a_order, cat_b_order = prepare_data(
-        data, cat_a, cat_b, cat_c, group, cat_c_colors, group_colors
+    return DicePlotData(
+        points=points,
+        x_categories=list(cat_a_order),
+        y_categories=list(cat_b_order),
+        category_labels=category_labels,
+        cat_c_colors=cat_c_colors,
+        ndots=ndots,
+        mode=mode,
+        fill_extent=fill_extent,
+        size_extent=size_extent,
     )
 
-    if group is not None:
-        # Check for unique group per cat_b
-        group_check = data.groupby(cat_b)[group].nunique().reset_index()
-        group_check = group_check[group_check[group] > 1]
-        if not group_check.empty:
-            warnings.warn("Warning: The following cat_b categories have multiple groups assigned:\n{}".format(
-                ', '.join(group_check[cat_b].tolist())
-            ))
 
-    # Calculate variable positions for dice sides
-    var_positions = calculate_var_positions(cat_c_colors, max_dice_sides)
+# ── Sample data helpers (preserved from old module) ────────────────────────
 
-    if group is not None:
-        # Perform hierarchical clustering to order cat_a if group is present
-        cat_b_order = perform_clustering(data, cat_a, cat_b, cat_c, group)
-        data[cat_b] = pd.Categorical(data[cat_b], categories=cat_b_order, ordered=True)
-
-    # Update plot_data
-    plot_data = data.merge(var_positions, left_on=cat_c, right_on='var', how='left')
-    plot_data = plot_data.dropna(subset=['x_offset', 'y_offset'])
-    plot_data['x_num'] = plot_data[cat_a].cat.codes + 1
-    plot_data['y_num'] = plot_data[cat_b].cat.codes + 1
-    plot_data['x_pos'] = plot_data['x_num'] + plot_data['x_offset']
-    plot_data['y_pos'] = plot_data['y_num'] + plot_data['y_offset']
-
-    if group is not None:
-        plot_data = plot_data.sort_values(by=[cat_a, group, cat_b])
-    else:
-        plot_data = plot_data.sort_values(by=[cat_a, cat_b])
-
-    # Prepare box_data
-    if group is not None:
-        box_data = data[[cat_a, cat_b, group]].drop_duplicates()
-    else:
-        box_data = data[[cat_a, cat_b]].drop_duplicates()
-        box_data[group] = None  # Add a dummy column for consistency
-
-    box_data['x_num'] = box_data[cat_a].cat.codes + 1
-    box_data['y_num'] = box_data[cat_b].cat.codes + 1
-    box_data['x_min'] = box_data['x_num'] - 0.4
-    box_data['x_max'] = box_data['x_num'] + 0.4
-    box_data['y_min'] = box_data['y_num'] - 0.4
-    box_data['y_max'] = box_data['y_num'] + 0.4
-
-    if group is not None:
-        box_data = box_data.sort_values(by=[cat_a, group, cat_b])
-    else:
-        box_data = box_data.sort_values(by=[cat_a, cat_b])
-
-    # Generate plot dimensions
-    plot_dimensions = generate_plot_dimensions(len(cat_a_order), len(cat_b_order), len(cat_c_colors))
-
-    return plot_data, box_data, cat_a_order, cat_b_order, var_positions, plot_dimensions
+def generate_automatic_colors(n_colors: int) -> List[str]:
+    """Generate `n_colors` distinct hex colors."""
+    prop_cycle = plt.rcParams["axes.prop_cycle"]
+    colors = list(prop_cycle.by_key()["color"])
+    if n_colors > len(colors):
+        extra = plt.cm.Set3(np.linspace(0, 1, n_colors - len(colors)))
+        colors.extend([mcolors.to_hex(c) for c in extra])
+    return [mcolors.to_hex(c) for c in colors[:n_colors]]
 
 
-def get_diceplot_example_data(n):
-    """
-    Returns a DataFrame suitable for creating a dice plot with n pathology variables.
-
-    Parameters:
-    n (int): Number of pathology variables (1 <= n <= 6)
-
-    Returns:
-    DataFrame: DataFrame containing the data for the dice plot, including 'Group' variable.
-    """
-    # Ensure n is between 1 and 6
+def get_diceplot_example_data(n: int) -> pd.DataFrame:
+    """Toy data for a dice plot with `n` pathology variables (1..6)."""
     if n < 1 or n > 6:
         raise ValueError("n must be between 1 and 6")
 
-    # Define cell types
     cell_types = ["Neuron", "Astrocyte", "Microglia", "Oligodendrocyte", "Endothelial"]
-
-    # Define pathways (ensure 15 pathways)
-    pathways_extended = [
-        "Apoptosis", "Inflammation", "Metabolism", "Signal Transduction", "Synaptic Transmission",
-        "Cell Cycle", "DNA Repair", "Protein Synthesis", "Lipid Metabolism", "Neurotransmitter Release",
-        "Oxidative Stress", "Energy Production", "Calcium Signaling", "Synaptic Plasticity", "Immune Response"
+    pathways = [
+        "Apoptosis", "Inflammation", "Metabolism", "Signal Transduction",
+        "Synaptic Transmission", "Cell Cycle", "DNA Repair", "Protein Synthesis",
+        "Lipid Metabolism", "Neurotransmitter Release", "Oxidative Stress",
+        "Energy Production", "Calcium Signaling", "Synaptic Plasticity",
+        "Immune Response",
     ]
+    pathology_vars = ["Alzheimer's disease", "Cancer", "Flu", "ADHD", "Age", "Weight"][:n]
 
-    # Assign groups to pathways
-    # Ensure that each pathway has only one group
-    pathway_groups = pd.DataFrame({
-        "Pathway": pathways_extended[:15],  # Ensure 15 pathways
-        "Group": [
-            "Linked", "UnLinked", "Other", "Linked", "UnLinked",
-            "UnLinked", "Other", "Other", "Other", "Linked",
-            "Other", "Other", "Linked", "UnLinked", "Other"
-        ]
-    })
-
-    # Define pathology variables for n=6
-    pathology_vars_6 = ["Alzheimer's disease", "Cancer", "Flu", "ADHD", "Age", "Weight"]
-
-    # Use the first n variables
-    pathology_vars = pathology_vars_6[:n]
-
-    # Create dummy data
-    np.random.seed(123)
-    data = pd.DataFrame([(ct, pw) for ct in cell_types for pw in pathways_extended[:15]],
-                        columns=["CellType", "Pathway"])
-
-    # Merge the group assignments into the data
-    data = data.merge(pathway_groups, on="Pathway", how="left")
-
-    # Assign random pathology variables to each combination
-    data_list = []
-    for idx, row in data.iterrows():
-        # For each cell type and pathway, randomly assign between 1 and n pathology variables
-        variables = np.random.choice(pathology_vars, size=np.random.randint(1, n + 1), replace=False)
-        for var in variables:
-            data_list.append({
-                "CellType": row["CellType"],
-                "Pathway": row["Pathway"],
-                "Group": row["Group"],
-                "PathologyVariable": var
-            })
-
-    # Create DataFrame from data_list
-    data_expanded = pd.DataFrame(data_list)
-
-    return data_expanded
+    rng = np.random.default_rng(123)
+    rows = []
+    for ct in cell_types:
+        for pw in pathways:
+            k = int(rng.integers(1, n + 1))
+            picks = rng.choice(pathology_vars, size=k, replace=False)
+            for var in picks:
+                rows.append({"CellType": ct, "Pathway": pw, "PathologyVariable": var})
+    return pd.DataFrame(rows)
 
 
-def generate_automatic_colors(n_colors):
-    """
-    Generates a list of distinct colors using matplotlib's color cycle.
-    
-    Parameters:
-    - n_colors: Number of colors to generate.
-    
-    Returns:
-    - colors: List of hex color codes.
-    """
-    # Get the default color cycle
-    prop_cycle = plt.rcParams['axes.prop_cycle']
-    colors = prop_cycle.by_key()['color']
-    
-    # If we need more colors than in the default cycle, generate additional ones
-    if n_colors > len(colors):
-        # Generate additional colors using a different colormap
-        additional_colors = plt.cm.Set3(np.linspace(0, 1, n_colors - len(colors)))
-        colors.extend([mcolors.to_hex(color) for color in additional_colors])
-    
-    # Return exactly n_colors
-    return colors[:n_colors]
+def get_example_group_colors() -> dict:
+    return {"Group1": "#1f77b4", "Group2": "#ff7f0e", "Group3": "#2ca02c"}
 
-def get_example_group_colors():
-    """
-    Returns example group colors for testing.
-    """
+
+def get_example_cat_c_colors() -> dict:
     return {
-        'Group1': '#1f77b4',
-        'Group2': '#ff7f0e',
-        'Group3': '#2ca02c'
-    }
-
-def get_example_cat_c_colors():
-    """
-    Returns example cat_c colors for testing.
-    """
-    return {
-        'Var1': '#1f77b4',
-        'Var2': '#ff7f0e',
-        'Var3': '#2ca02c',
-        'Var4': '#d62728'
+        "Alzheimer's disease": "#1f77b4",
+        "Cancer": "#ff7f0e",
+        "Flu": "#2ca02c",
+        "ADHD": "#d62728",
+        "Age": "#9467bd",
+        "Weight": "#8c564b",
     }

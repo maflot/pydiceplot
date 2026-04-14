@@ -1,259 +1,145 @@
+"""Public dice/domino plot API — thin wrappers that dispatch to the active backend."""
+
+from __future__ import annotations
+
 import importlib
-import warnings
+from typing import Optional
 
 
-class Plot:
-    def __init__(self, **kwargs):
+class _BackendPlot:
+    def __init__(self):
         from pydiceplot._backend import _backend
         module_name = f"pydiceplot.plots.backends._{_backend}_backend"
         self._backend_module = importlib.import_module(module_name)
         self.fig = None
 
-    def prepare_plot(self, **kwargs):
-        self.fig = self._plot_function(**kwargs)
+    def _prepare(self, fn_name: str, **kwargs):
+        fn = getattr(self._backend_module, fn_name)
+        self.fig = fn(**kwargs)
 
     def show(self):
-        getattr(self._backend_module, "show_plot")(self.fig)
+        self._backend_module.show_plot(self.fig)
 
     def save(self, plot_path, output_str, formats):
-        (getattr(self._backend_module, "save_plot")
-         (self.fig, plot_path, output_str, formats))
+        self._backend_module.save_plot(self.fig, plot_path, output_str, formats)
 
 
-class DicePlot(Plot):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._plot_function = getattr(
-            self._backend_module, "plot_dice")
+def dice_plot(
+    data,
+    cat_a: str,
+    cat_b: str,
+    cat_c: str,
+    *,
+    # Mode selection
+    cat_c_colors: Optional[dict] = None,
+    fill_col: Optional[str] = None,
+    size_col: Optional[str] = None,
+    # Ordering
+    cat_a_order=None,
+    cat_b_order=None,
+    switch_axis: bool = False,
+    # Dice shape
+    ndots: Optional[int] = None,
+    pip_scale: float = 0.85,
+    cell_width: float = 0.85,
+    cell_height: float = 0.85,
+    grid_lines: bool = False,
+    # Color scales
+    fill_range=None,
+    size_range=None,
+    color_map: str = "viridis",
+    # Labels
+    title: Optional[str] = None,
+    cat_a_labs: Optional[str] = None,
+    cat_b_labs: Optional[str] = None,
+    cat_c_labs: Optional[str] = None,
+    fill_legend_label: Optional[str] = None,
+    size_legend_label: Optional[str] = None,
+    position_legend_label: Optional[str] = None,
+    # Dimensions
+    fig_width: Optional[float] = None,
+    fig_height: Optional[float] = None,
+    max_dice_sides: int = 6,
+    # Legacy (unused, accepted for back-compat)
+    group=None,
+    group_colors=None,
+    group_alpha: float = 0.6,
+):
+    """Create a dice plot using the active backend.
 
-class DominoPlot(Plot):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._plot_function = getattr(
-            self._backend_module, "plot_domino")
+    Three modes, chosen by the inputs you pass:
 
+    - **Categorical** (default): supply `cat_c_colors={label: hex, ...}`. Each
+      pip slot shows a filled circle in its category colour when present.
+    - **Per-dot continuous**: pass `fill_col` and/or `size_col` (column names
+      in `data`). Each pip encodes continuous fill and/or size, with a matching
+      colorbar/size legend.
+    - **Tile mode**: not auto-detected in the long-format API; use `fill_col`
+      on a single-row-per-tile DataFrame.
 
-def dice_plot(data,
-              cat_a,
-              cat_b,
-              cat_c,
-              group = None,
-              switch_axis=False,
-              group_alpha=0.6,
-              title=None,
-              cat_c_colors=None,
-              group_colors=None,
-              max_dice_sides=6,
-              cat_a_labs = None,
-              cat_b_labs = None,
-              cat_c_labs = None,
-              fig_width=None,
-              fig_height=None):
-    
-    fig = DicePlot()
-    fig.prepare_plot(data=data,
-             cat_a=cat_a,
-             cat_b=cat_b,
-             cat_c=cat_c,
-             group=group,
-             switch_axis=switch_axis,
-             group_alpha=group_alpha,
-             title=title,
-             cat_c_colors=cat_c_colors,
-             group_colors=group_colors,
-             max_dice_sides=max_dice_sides,
-             cat_a_labs=cat_a_labs,
-             cat_b_labs=cat_b_labs,
-             cat_c_labs=cat_c_labs,
-             fig_width=fig_width,
-             fig_height=fig_height)
-    return fig
-
-
-def domino_plot(data,
-                gene_list,
-                switch_axis=False,
-                min_dot_size=1,
-                max_dot_size=5,
-                spacing_factor=3,
-                var_id="var",
-                feature_col="gene",
-                celltype_col="CellType",
-                contrast_col="Contrast",
-                contrast_levels=["Clinical", "Pathological"],
-                contrast_labels=["Clinical", "Pathological"],
-                logfc_col="avg_log2FC",
-                pval_col="p_val_adj",
-                logfc_limits=(-1.5, 1.5),
-                logfc_colors={"low": "blue", "mid": "white", "high": "red"},
-                color_scale_name="Log2 Fold Change",
-                axis_text_size=8,
-                aspect_ratio=None,
-                base_width=5,
-                base_height=4,
-                title=None,
-                xlabel=None,
-                ylabel=None):
-    plot = DominoPlot()
-
-    plot.prepare_plot(
-        data=data,
-        gene_list=gene_list,
-        switch_axis=switch_axis,
-        min_dot_size=min_dot_size,
-        max_dot_size=max_dot_size,
-        spacing_factor=spacing_factor,
-        var_id=var_id,
-        feature_col=feature_col,
-        celltype_col=celltype_col,
-        contrast_col=contrast_col,
-        contrast_levels=contrast_levels,
-        contrast_labels=contrast_labels,
-        logfc_col=logfc_col,
-        pval_col=pval_col,
-        logfc_limits=logfc_limits,
-        logfc_colors=logfc_colors,
-        color_scale_name=color_scale_name,
-        axis_text_size=axis_text_size,
-        aspect_ratio=aspect_ratio,
-        base_width=base_width,
-        base_height=base_height,
-        title=title,
-        xlabel=xlabel,
-        ylabel=ylabel
+    The legend stack (right-hand column) always includes a position legend
+    showing which pip slot corresponds to which cat_c label, matching
+    ggdiceplot's `draw_key` behavior.
+    """
+    plot = _BackendPlot()
+    plot._prepare(
+        "plot_dice",
+        data=data, cat_a=cat_a, cat_b=cat_b, cat_c=cat_c,
+        cat_c_colors=cat_c_colors, fill_col=fill_col, size_col=size_col,
+        cat_a_order=cat_a_order, cat_b_order=cat_b_order, switch_axis=switch_axis,
+        ndots=ndots, pip_scale=pip_scale,
+        cell_width=cell_width, cell_height=cell_height, grid_lines=grid_lines,
+        fill_range=fill_range, size_range=size_range, color_map=color_map,
+        title=title, cat_a_labs=cat_a_labs, cat_b_labs=cat_b_labs, cat_c_labs=cat_c_labs,
+        fill_legend_label=fill_legend_label, size_legend_label=size_legend_label,
+        position_legend_label=position_legend_label,
+        fig_width=fig_width, fig_height=fig_height, max_dice_sides=max_dice_sides,
+        group=group, group_colors=group_colors, group_alpha=group_alpha,
     )
-
     return plot
 
 
-if __name__ == "__main__":
-
-    import numpy as np
-    import pandas as pd
-    from pydiceplot import dice_plot
-    import pydiceplot
-    pydiceplot.set_backend("matplotlib")
-
-    plot_path = "./plots"
-
-    # Define cell types (cat_a)
-    cell_types = ["Neuron", "Astrocyte", "Microglia", "Oligodendrocyte", "Endothelial"]
-
-    # Define pathways (cat_b) and groups
-    pathways_initial = [
-        "Apoptosis", "Inflammation", "Metabolism", "Signal Transduction", "Synaptic Transmission",
-        "Cell Cycle", "DNA Repair", "Protein Synthesis", "Lipid Metabolism", "Neurotransmitter Release"
-    ]
-
-    # Extend pathways to 15 for higher examples
-    pathways_extended = pathways_initial + [
-        "Oxidative Stress", "Energy Production", "Calcium Signaling", "Synaptic Plasticity", "Immune Response"
-    ]
-
-
-    # Function to create and save dice plots
-    def create_and_save_dice_plot(num_vars, pathology_vars, cat_c_colors, output_str, title, fig_width=None, fig_height=None):
-        # Assign groups to pathways
-        # Ensure that each pathway has only one group
-        pathway_groups = pd.DataFrame({
-            "Pathway": pathways_extended[:15],  # Ensure 15 pathways
-            "Group": [
-                "Linked", "UnLinked", "Other", "Linked", "UnLinked",
-                "UnLinked", "Other", "Other", "Other", "Linked",
-                "Other", "Other", "Linked", "UnLinked", "Other"
-            ]
-        })
-
-        # Define group colors
-        group_colors = {
-            "Linked": "#333333",
-            "UnLinked": "#888888",
-            "Other": "#DDDDDD"
-        }
-
-        # Create dummy data
-        np.random.seed(123)
-        data = pd.DataFrame([(ct, pw) for ct in cell_types for pw in pathways_extended[:15]],
-                            columns=["CellType", "Pathway"])
-
-        # Assign random pathology variables to each combination
-        data_list = []
-        for idx, row in data.iterrows():
-            variables = np.random.choice(pathology_vars, size=np.random.randint(1, num_vars + 1), replace=False)
-            for var in variables:
-                data_list.append({
-                    "CellType": row["CellType"],
-                    "Pathway": row["Pathway"],
-                    "PathologyVariable": var
-                })
-
-        # Create DataFrame from data_list
-        data_expanded = pd.DataFrame(data_list)
-
-        # Merge the group assignments into the data
-        data_expanded = data_expanded.merge(pathway_groups, left_on="Pathway", right_on="Pathway", how="left")
-
-        # Use the dice_plot function
-        fig = dice_plot(
-            data=data_expanded,
-            cat_a="CellType",
-            cat_b="Pathway",
-            cat_c="PathologyVariable",
-            group="Group",
-            switch_axis=False,
-            group_alpha=0.6,
-            title=title,
-            cat_c_colors=cat_c_colors,
-            group_colors=group_colors,
-            max_dice_sides=6,  # Adjust if needed
-            cat_a_labs="Cell Types",
-            cat_b_labs="Biological Pathways",
-            cat_c_labs="Pathology Variables",
-            fig_width=fig_width,
-            fig_height=fig_height
-        )
-
-        # Optionally display the figure
-        fig.show()
-        fig.save(plot_path, output_str, formats=".png")
-
-
-    # Example 1: 3 Pathology Variables with custom dimensions
-    pathology_vars_3 = ["Stroke", "Cancer", "Flu"]
-    cat_c_colors_3 = {
-        "Stroke": "#d5cccd",
-        "Cancer": "#cb9992",
-        "Flu": "#ad310f"
-    }
-    create_and_save_dice_plot(
-        num_vars=3,
-        pathology_vars=pathology_vars_3,
-        cat_c_colors=cat_c_colors_3,
-        output_str="dice_plot_3_custom_size",
-        title="Dice Plot with 3 Pathology Variables (Custom Size)",
-        fig_width=12,  # inches for matplotlib
-        fig_height=8   # inches for matplotlib
+def domino_plot(
+    data,
+    gene_list,
+    *,
+    switch_axis: bool = False,
+    min_dot_size: float = 1,
+    max_dot_size: float = 5,
+    spacing_factor: float = 3,
+    var_id: str = "var",
+    feature_col: str = "gene",
+    celltype_col: str = "CellType",
+    contrast_col: str = "Contrast",
+    contrast_levels=("Clinical", "Pathological"),
+    contrast_labels=("Clinical", "Pathological"),
+    logfc_col: str = "avg_log2FC",
+    pval_col: str = "p_val_adj",
+    logfc_limits=(-1.5, 1.5),
+    logfc_colors=None,
+    color_scale_name: str = "Log2 Fold Change",
+    axis_text_size: float = 8,
+    aspect_ratio=None,
+    base_width: float = 5,
+    base_height: float = 4,
+    title: Optional[str] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+):
+    """Create a domino plot (per-row fold-change × p-value, paired contrasts)."""
+    if logfc_colors is None:
+        logfc_colors = {"low": "blue", "mid": "white", "high": "red"}
+    plot = _BackendPlot()
+    plot._prepare(
+        "plot_domino",
+        data=data, gene_list=gene_list, switch_axis=switch_axis,
+        min_dot_size=min_dot_size, max_dot_size=max_dot_size, spacing_factor=spacing_factor,
+        var_id=var_id, feature_col=feature_col, celltype_col=celltype_col,
+        contrast_col=contrast_col, contrast_levels=contrast_levels, contrast_labels=contrast_labels,
+        logfc_col=logfc_col, pval_col=pval_col, logfc_limits=logfc_limits,
+        logfc_colors=logfc_colors, color_scale_name=color_scale_name,
+        axis_text_size=axis_text_size, aspect_ratio=aspect_ratio,
+        base_width=base_width, base_height=base_height,
+        title=title, xlabel=xlabel, ylabel=ylabel,
     )
-
-    # Switch to plotly backend for the next example
-    pydiceplot.set_backend("plotly")
-
-    # Example 2: 4 Pathology Variables with custom dimensions in pixels
-    pathology_vars_4 = ["Stroke", "Cancer", "Flu", "ADHD"]
-    cat_c_colors_4 = {
-        "Stroke": "#d5cccd",
-        "Cancer": "#cb9992",
-        "Flu": "#ad310f",
-        "ADHD": "#7e2a20"
-    }
-    create_and_save_dice_plot(
-        num_vars=4,
-        pathology_vars=pathology_vars_4,
-        cat_c_colors=cat_c_colors_4,
-        output_str="dice_plot_4_custom_size",
-        title="Dice Plot with 4 Pathology Variables (Custom Size)",
-        fig_width=1200,  # pixels for plotly
-        fig_height=800   # pixels for plotly
-    )
-
-    print(f"All dice plots have been saved to the '{plot_path}' directory in both HTML and PNG formats.")
+    return plot
