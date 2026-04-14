@@ -66,7 +66,7 @@ def plot_dice(
     # dimensions
     fig_width: Optional[float] = None,
     fig_height: Optional[float] = None,
-    max_dice_sides: int = 6,
+    max_dice_sides: int = 9,
     # legacy ignored
     group=None,
     group_colors=None,

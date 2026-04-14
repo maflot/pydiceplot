@@ -58,7 +58,7 @@ def plot_dice(
     position_legend_label: Optional[str] = None,
     fig_width: Optional[float] = None,
     fig_height: Optional[float] = None,
-    max_dice_sides: int = 6,
+    max_dice_sides: int = 9,
     group=None, group_colors=None, group_alpha=0.6,
 ):
     dp = preprocess_dice_plot(

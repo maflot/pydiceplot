@@ -69,7 +69,7 @@ def preprocess_dice_plot(
     size_col: Optional[str] = None,
     cat_a_order: Optional[Sequence[str]] = None,
     cat_b_order: Optional[Sequence[str]] = None,
-    max_dice_sides: int = 6,
+    max_dice_sides: int = 9,
 ) -> DicePlotData:
     """Turn long-format `data` into a `DicePlotData` ready for rendering.
 
@@ -194,9 +194,9 @@ def generate_automatic_colors(n_colors: int) -> List[str]:
 
 
 def get_diceplot_example_data(n: int) -> pd.DataFrame:
-    """Toy data for a dice plot with `n` pathology variables (1..6)."""
-    if n < 1 or n > 6:
-        raise ValueError("n must be between 1 and 6")
+    """Toy data for a dice plot with `n` pathology variables (1..9)."""
+    if n < 1 or n > 9:
+        raise ValueError("n must be between 1 and 9")
 
     cell_types = ["Neuron", "Astrocyte", "Microglia", "Oligodendrocyte", "Endothelial"]
     pathways = [
@@ -206,7 +206,10 @@ def get_diceplot_example_data(n: int) -> pd.DataFrame:
         "Energy Production", "Calcium Signaling", "Synaptic Plasticity",
         "Immune Response",
     ]
-    pathology_vars = ["Alzheimer's disease", "Cancer", "Flu", "ADHD", "Age", "Weight"][:n]
+    pathology_vars = [
+        "Alzheimer's disease", "Cancer", "Flu", "ADHD", "Age", "Weight",
+        "Diabetes", "Obesity", "Hypertension",
+    ][:n]
 
     rng = np.random.default_rng(123)
     rows = []
@@ -231,4 +234,7 @@ def get_example_cat_c_colors() -> dict:
         "ADHD": "#d62728",
         "Age": "#9467bd",
         "Weight": "#8c564b",
+        "Diabetes": "#e377c2",
+        "Obesity": "#17becf",
+        "Hypertension": "#bcbd22",
     }

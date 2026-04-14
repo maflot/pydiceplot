@@ -21,7 +21,9 @@ them at any time with `pixi run example`.
 
 ![4-category dice plot](images/dice_4_categorical.png)
 
-![6-category dice plot](images/dice_6_categorical.png)
+![6-category dice plot (traditional two-column face)](images/dice_6_categorical.png)
+
+![9-category dice plot (fully populated 3×3 face)](images/dice_9_categorical.png)
 
 ![Per-dot continuous fill and size](images/dice_per_dot_continuous.png)
 
@@ -154,16 +156,21 @@ pos 2 (ML)  pos 5 (MM)  pos 8 (MR)
 pos 3 (BL)  pos 6 (BM)  pos 9 (BR)
 ```
 
-Dice sizes pick from this table (matching `ggdiceplot::make_offsets`):
+Dice sizes pick from this table (traditional die faces; n=6 is two vertical
+columns, not two horizontal rows — this is where we deliberately diverge from
+`ggdiceplot::make_offsets`, which renders the transposed layout):
 
 | n | positions | visual |
 |---|-----------|--------|
 | 1 | `[5]` | center |
-| 2 | `[1, 9]` | TL + BR (diagonal) |
+| 2 | `[1, 9]` | diagonal (TL + BR) |
 | 3 | `[1, 5, 9]` | diagonal + center |
-| 4 | `[1, 7, 3, 9]` | four corners |
-| 5 | `[1, 7, 5, 3, 9]` | corners + center |
-| 6 | `[1, 4, 7, 3, 6, 9]` | top row + bottom row |
+| 4 | `[1, 3, 7, 9]` | four corners |
+| 5 | `[1, 3, 5, 7, 9]` | corners + center |
+| 6 | `[1, 3, 4, 6, 7, 9]` | two vertical columns |
+| 7 | `[1, 3, 4, 5, 6, 7, 9]` | 6 + center |
+| 8 | `[1, 2, 3, 4, 6, 7, 8, 9]` | 3×3 minus center |
+| 9 | `[1, 2, 3, 4, 5, 6, 7, 8, 9]` | fully populated 3×3 |
 
 ## Citation
 

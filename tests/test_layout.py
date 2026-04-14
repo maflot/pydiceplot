@@ -1,8 +1,14 @@
 """Geometry sanity for the dice grid layout.
 
-The (x, y) offsets for each face must match `ggdiceplot::make_offsets()` when
-the y-axis is flipped (we store y-down, ggdiceplot uses y-up). These values
-were captured from the live R package at cell_width=cell_height=1.0, pad=0.1.
+Positions match the **traditional die-face** layout (n=6 is two vertical
+columns, not two horizontal rows — which is where we deliberately diverge
+from ggdiceplot). The expected offsets below are generated from a natural
+row-major reading of the 3×3 grid at `cell_width=cell_height=1.0, pad=0.1`.
+
+    col=0 col=1 col=2
+      1     2     3     row=0 (top)
+      4     5     6     row=1 (middle)
+      7     8     9     row=2 (bottom)
 """
 
 import pytest
@@ -16,25 +22,35 @@ from pydiceplot.plots.backends._layout import (
 )
 
 
-# (x, y_up) from ggdiceplot
-GGDICEPLOT_OFFSETS = {
+# (x, y_up) expected by the traditional die-face layout
+TRADITIONAL_OFFSETS = {
     1: [(0.00, 0.00)],
     2: [(-0.40, 0.40), (0.40, -0.40)],
     3: [(-0.40, 0.40), (0.00, 0.00), (0.40, -0.40)],
     4: [(-0.40, 0.40), (0.40, 0.40), (-0.40, -0.40), (0.40, -0.40)],
     5: [(-0.40, 0.40), (0.40, 0.40), (0.00, 0.00), (-0.40, -0.40), (0.40, -0.40)],
-    6: [(-0.40, 0.40), (0.00, 0.40), (0.40, 0.40),
+    6: [(-0.40, 0.40), (0.40, 0.40),
+        (-0.40, 0.00), (0.40, 0.00),
+        (-0.40, -0.40), (0.40, -0.40)],
+    7: [(-0.40, 0.40), (0.40, 0.40),
+        (-0.40, 0.00), (0.00, 0.00), (0.40, 0.00),
+        (-0.40, -0.40), (0.40, -0.40)],
+    8: [(-0.40, 0.40), (0.00, 0.40), (0.40, 0.40),
+        (-0.40, 0.00), (0.40, 0.00),
+        (-0.40, -0.40), (0.00, -0.40), (0.40, -0.40)],
+    9: [(-0.40, 0.40), (0.00, 0.40), (0.40, 0.40),
+        (-0.40, 0.00), (0.00, 0.00), (0.40, 0.00),
         (-0.40, -0.40), (0.00, -0.40), (0.40, -0.40)],
 }
 
 
-@pytest.mark.parametrize("n", [1, 2, 3, 4, 5, 6])
-def test_dot_offsets_match_ggdiceplot(n):
+@pytest.mark.parametrize("n", [1, 2, 3, 4, 5, 6, 7, 8, 9])
+def test_dot_offsets_match_traditional_die_faces(n):
     offs = dot_offsets(n, cell_width=1.0, cell_height=1.0, pad=0.1)
-    expected = GGDICEPLOT_OFFSETS[n]
+    expected = TRADITIONAL_OFFSETS[n]
     assert len(offs) == len(expected)
     for (dx, dy_down), (ex, ey_up) in zip(offs, expected):
-        # We use y-down; ggdiceplot uses y-up. Negate dy for comparison.
+        # We use y-down; ggplot2-style y-up for comparison → negate dy.
         assert dx == pytest.approx(ex, abs=1e-9)
         assert -dy_down == pytest.approx(ey_up, abs=1e-9)
 
@@ -43,15 +59,27 @@ def test_dice_positions_table():
     assert DICE_POSITIONS[1] == [5]
     assert DICE_POSITIONS[2] == [1, 9]
     assert DICE_POSITIONS[3] == [1, 5, 9]
-    assert DICE_POSITIONS[4] == [1, 7, 3, 9]
-    assert DICE_POSITIONS[5] == [1, 7, 5, 3, 9]
-    assert DICE_POSITIONS[6] == [1, 4, 7, 3, 6, 9]
+    assert DICE_POSITIONS[4] == [1, 3, 7, 9]
+    assert DICE_POSITIONS[5] == [1, 3, 5, 7, 9]
+    assert DICE_POSITIONS[6] == [1, 3, 4, 6, 7, 9]
+    assert DICE_POSITIONS[7] == [1, 3, 4, 5, 6, 7, 9]
+    assert DICE_POSITIONS[8] == [1, 2, 3, 4, 6, 7, 8, 9]
+    assert DICE_POSITIONS[9] == [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
 
 def test_grid_positions_are_row_col():
     """`dot_grid_positions(4)` → TL, TR, BL, BR as (row, col)."""
     grid = dot_grid_positions(4)
     assert grid == [(0, 0), (0, 2), (2, 0), (2, 2)]
+
+
+def test_grid_positions_for_six_are_two_columns():
+    """n=6 must be two vertical columns: TL, TR, ML, MR, BL, BR."""
+    assert dot_grid_positions(6) == [
+        (0, 0), (0, 2),
+        (1, 0), (1, 2),
+        (2, 0), (2, 2),
+    ]
 
 
 def test_compute_dice_layout_centres_square_grid():
@@ -75,7 +103,7 @@ def test_compute_dice_layout_rejects_bad_inputs():
     with pytest.raises(ValueError):
         compute_dice_layout(n_x=0, n_y=2, plot_width=100, plot_height=100, ndots=4)
     with pytest.raises(ValueError):
-        compute_dice_layout(n_x=2, n_y=2, plot_width=100, plot_height=100, ndots=7)
+        compute_dice_layout(n_x=2, n_y=2, plot_width=100, plot_height=100, ndots=10)
 
 
 def test_scaled_pip_radius_clamps_and_maps():

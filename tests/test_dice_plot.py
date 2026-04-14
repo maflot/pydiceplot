@@ -78,10 +78,10 @@ def test_preprocess_drops_unknown_categories():
 
 def test_preprocess_rejects_too_many_categories():
     data = pd.DataFrame({
-        "a": ["x"] * 7, "b": ["y"] * 7,
-        "c": list("ABCDEFG"),
+        "a": ["x"] * 10, "b": ["y"] * 10,
+        "c": list("ABCDEFGHIJ"),
     })
-    with pytest.raises(ValueError, match="must be in 1..6"):
+    with pytest.raises(ValueError, match="must be in 1..9"):
         preprocess_dice_plot(data, "a", "b", "c")
 
 
@@ -116,7 +116,7 @@ def test_matplotlib_per_dot_renders(tmp_path):
     assert (tmp_path / "out.png").exists()
 
 
-@pytest.mark.parametrize("n", [1, 2, 3, 4, 5, 6])
+@pytest.mark.parametrize("n", [1, 2, 3, 4, 5, 6, 7, 8, 9])
 def test_matplotlib_renders_all_dice_sizes(n, tmp_path):
     pydiceplot.set_backend("matplotlib")
     data = get_diceplot_example_data(n)

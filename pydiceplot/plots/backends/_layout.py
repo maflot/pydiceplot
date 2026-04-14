@@ -23,27 +23,29 @@ DICE_POSITIONS: dict[int, List[int]] = {
     1: [5],
     2: [1, 9],
     3: [1, 5, 9],
-    4: [1, 7, 3, 9],
-    5: [1, 7, 5, 3, 9],
-    6: [1, 4, 7, 3, 6, 9],
+    4: [1, 3, 7, 9],              # four corners
+    5: [1, 3, 5, 7, 9],            # corners + centre
+    6: [1, 3, 4, 6, 7, 9],         # traditional die: two vertical columns
+    7: [1, 3, 4, 5, 6, 7, 9],       # 6 + centre
+    8: [1, 2, 3, 4, 6, 7, 8, 9],    # 3×3 minus centre
+    9: [1, 2, 3, 4, 5, 6, 7, 8, 9], # fully populated 3×3
 }
 
-# Position→(col, row) mapping uses ggdiceplot's convention:
+# Position→(row, col) mapping uses natural reading order:
 #
 #     col=0 col=1 col=2
-#       1     4     7     row=0 (top)
-#       2     5     8     row=1 (middle)
-#       3     6     9     row=2 (bottom)
+#       1     2     3     row=0 (top)
+#       4     5     6     row=1 (middle)
+#       7     8     9     row=2 (bottom)
 #
-# So `col = (p-1) // 3` and `row_from_top = (p-1) % 3`.
-# Dice-face lookups (e.g. n=4 → [1,7,3,9]) then give TL, TR, BL, BR in reading
-# order, which matches ggdiceplot's `make_offsets()` output exactly.
+# So `row = (p-1) // 3` and `col = (p-1) % 3`. This gives traditional
+# die faces for every n in 1..9.
 
 
 def dot_grid_positions(ndots: int) -> List[Tuple[int, int]]:
     """Return `(grid_row, grid_col)` for each pip, with row 0 = top, col 0 = left."""
     positions = DICE_POSITIONS.get(ndots, [])
-    return [((p - 1) % 3, (p - 1) // 3) for p in positions]
+    return [((p - 1) // 3, (p - 1) % 3) for p in positions]
 
 
 def dot_offsets(
@@ -127,13 +129,13 @@ def compute_dice_layout(
 ) -> DiceLayout:
     """Compute a centred square-cell dice layout, mirroring kuva::add_diceplot.
 
-    Kuva picks `cell_sq = min(plot_w/n_x, plot_h/n_y)` so both axes use the same
+    Picks `cell_sq = min(plot_w/n_x, plot_h/n_y)` so both axes use the same
     cell size, then centres the grid within the plot area.
     """
     if n_x <= 0 or n_y <= 0:
         raise ValueError(f"n_x and n_y must be positive, got ({n_x}, {n_y})")
-    if ndots < 1 or ndots > 6:
-        raise ValueError(f"ndots must be in 1..6, got {ndots}")
+    if ndots < 1 or ndots > 9:
+        raise ValueError(f"ndots must be in 1..9, got {ndots}")
 
     cw = plot_width / n_x
     ch = plot_height / n_y

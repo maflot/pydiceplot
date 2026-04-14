@@ -73,6 +73,7 @@ if __name__ == "__main__":
 
     example_n_categorical(4, "dice_4_categorical")
     example_n_categorical(6, "dice_6_categorical")
+    example_n_categorical(9, "dice_9_categorical")
     example_per_dot_continuous("dice_per_dot_continuous")
 
     print(f"Wrote showcase images to {IMAGES_DIR}/")
