@@ -14,6 +14,17 @@ The grid geometry and legend stack are ports of
 port of `ggdiceplot`'s `geom_dice` — so all three packages produce the same
 visual layout.
 
+## Sample output
+
+The three images below are produced by `example_code/example.py`. Regenerate
+them at any time with `pixi run example`.
+
+![4-category dice plot](images/dice_4_categorical.png)
+
+![6-category dice plot](images/dice_6_categorical.png)
+
+![Per-dot continuous fill and size](images/dice_per_dot_continuous.png)
+
 ## Install
 
 ```bash
