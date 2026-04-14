@@ -1,4 +1,9 @@
-"""pydiceplot examples — regenerates the showcase images in ../images/.
+"""Regenerate all showcase images under `./images/`.
+
+The first block is the quick categorical + per-dot tour used in the readme's
+"Quick start" section. The `ggport_*` block runs 1-to-1 ports of the plots
+in `ggdiceplot/demo_output/` plus a creative n=9 example that exercises the
+fully-populated 3×3 die face.
 
 Run with:
 
@@ -16,15 +21,19 @@ from pydiceplot.plots.backends._dice_utils import (
     get_example_cat_c_colors,
 )
 
+from . import (
+    oral_microbiome,
+    oral_microbiome_fill_only,
+    oral_microbiome_large,
+    mirna_direction,
+    zebra_domino,
+    pathways_nine,
+)
+
 IMAGES_DIR = "images"
 
 
 def example_n_categorical(n: int, filename: str):
-    """Categorical mode: each pip is a cat_c category coloured by a fixed palette.
-
-    Mirrors ggdiceplot's `geom_dice(aes(dots=cat_c), fill=...)` with a fixed
-    colour per category.
-    """
     cat_c_colors = get_example_cat_c_colors()
     data = get_diceplot_example_data(n)
     present = list(data["PathologyVariable"].unique())
@@ -42,10 +51,6 @@ def example_n_categorical(n: int, filename: str):
 
 
 def example_per_dot_continuous(filename: str):
-    """Per-dot continuous mode: each pip encodes `fill_col` and `size_col`.
-
-    Mirrors ggdiceplot's `geom_dice(aes(dots=cat_c, fill=lfc, size=-log10(q)))`.
-    """
     rng = np.random.default_rng(1)
     data = get_diceplot_example_data(4)
     data["lfc"] = rng.normal(0, 1.2, len(data))
@@ -71,9 +76,20 @@ if __name__ == "__main__":
     os.makedirs(IMAGES_DIR, exist_ok=True)
     pydiceplot.set_backend("matplotlib")
 
+    # Quick-start showcase
     example_n_categorical(4, "dice_4_categorical")
     example_n_categorical(6, "dice_6_categorical")
     example_n_categorical(9, "dice_9_categorical")
     example_per_dot_continuous("dice_per_dot_continuous")
+
+    # ggdiceplot demo ports
+    oral_microbiome.run(IMAGES_DIR)
+    oral_microbiome_fill_only.run(IMAGES_DIR)
+    oral_microbiome_large.run(IMAGES_DIR)
+    mirna_direction.run(IMAGES_DIR)
+    zebra_domino.run(IMAGES_DIR)
+
+    # Creative n=9 example
+    pathways_nine.run(IMAGES_DIR)
 
     print(f"Wrote showcase images to {IMAGES_DIR}/")

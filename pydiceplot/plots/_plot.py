@@ -33,10 +33,12 @@ def dice_plot(
     # Mode selection
     cat_c_colors: Optional[dict] = None,
     fill_col: Optional[str] = None,
+    fill_palette: Optional[dict] = None,
     size_col: Optional[str] = None,
     # Ordering
     cat_a_order=None,
     cat_b_order=None,
+    cat_c_order=None,
     switch_axis: bool = False,
     # Dice shape
     ndots: Optional[int] = None,
@@ -85,9 +87,10 @@ def dice_plot(
     plot._prepare(
         "plot_dice",
         data=data, cat_a=cat_a, cat_b=cat_b, cat_c=cat_c,
-        cat_c_colors=cat_c_colors, fill_col=fill_col, size_col=size_col,
-        cat_a_order=cat_a_order, cat_b_order=cat_b_order, switch_axis=switch_axis,
-        ndots=ndots, pip_scale=pip_scale,
+        cat_c_colors=cat_c_colors, fill_col=fill_col, fill_palette=fill_palette,
+        size_col=size_col,
+        cat_a_order=cat_a_order, cat_b_order=cat_b_order, cat_c_order=cat_c_order,
+        switch_axis=switch_axis, ndots=ndots, pip_scale=pip_scale,
         cell_width=cell_width, cell_height=cell_height, grid_lines=grid_lines,
         fill_range=fill_range, size_range=size_range, color_map=color_map,
         title=title, cat_a_labs=cat_a_labs, cat_b_labs=cat_b_labs, cat_c_labs=cat_c_labs,

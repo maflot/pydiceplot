@@ -64,6 +64,38 @@ def test_preprocess_per_dot_mode():
     assert len(pt.dot_sizes) == 3
 
 
+def test_preprocess_fill_palette_discrete_mode():
+    data = pd.DataFrame({
+        "a": ["x", "x", "x", "y"],
+        "b": ["p", "p", "q", "q"],
+        "c": ["L", "R", "L", "R"],
+        "direction": ["Up", "Down", "Up", "Unchanged"],
+    })
+    palette = {"Up": "#ff0000", "Down": "#0000ff", "Unchanged": "#888888"}
+    dp = preprocess_dice_plot(
+        data, "a", "b", "c",
+        fill_col="direction", fill_palette=palette,
+        cat_c_order=["L", "R"],
+    )
+    assert dp.mode == "categorical"
+    assert dp.ndots == 2
+    # Point (x,p): L→Up=#ff0000, R→Down=#0000ff
+    xp = next(p for p in dp.points if (p.x_cat, p.y_cat) == ("x", "p"))
+    assert xp.dot_colors == ["#ff0000", "#0000ff"]
+    # The legend colors should come from the palette, not cat_c_colors
+    assert dp.cat_c_colors == palette
+
+
+def test_preprocess_rejects_mixing_cat_c_colors_and_fill_palette():
+    data = pd.DataFrame({"a": ["x"], "b": ["y"], "c": ["L"], "f": ["Up"]})
+    with pytest.raises(ValueError, match="either"):
+        preprocess_dice_plot(
+            data, "a", "b", "c",
+            cat_c_colors={"L": "#ff0000"},
+            fill_col="f", fill_palette={"Up": "#00ff00"},
+        )
+
+
 def test_preprocess_drops_unknown_categories():
     data = pd.DataFrame({
         "a": ["x", "x", "x"],

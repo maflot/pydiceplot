@@ -16,8 +16,10 @@ visual layout.
 
 ## Sample output
 
-The three images below are produced by `example_code/example.py`. Regenerate
-them at any time with `pixi run example`.
+Everything below is produced by `example_code/example.py`. Regenerate at any
+time with `pixi run example`.
+
+### Quick tour
 
 ![4-category dice plot](images/dice_4_categorical.png)
 
@@ -26,6 +28,44 @@ them at any time with `pixi run example`.
 ![9-category dice plot (fully populated 3×3 face)](images/dice_9_categorical.png)
 
 ![Per-dot continuous fill and size](images/dice_per_dot_continuous.png)
+
+### 1-to-1 ports of ggdiceplot's demo plots
+
+Each script in `example_code/` reproduces one of the figures from
+`ggdiceplot/demo_output/`. The data is loaded from exported CSVs shipped
+under `example_code/data/`.
+
+**Oral microbiome** — 8 taxa × 5 specimens × 4 diseases, per-pip Log2FC and
+-log10 q. Mirrors `sample_dice_data2` / `example2.png`.
+
+![Oral microbiome](images/ggport_oral_microbiome.png)
+
+**Oral microbiome, fill-only** — same data but size is constant and
+`pip_scale=1.0` fills the die face fully. Mirrors `example4_fill_only.png`.
+
+![Oral microbiome — fill only](images/ggport_oral_microbiome_fill_only.png)
+
+**miRNA × compound × organ, discrete direction** — the pip slot selects the
+organ, the pip colour encodes the regulation direction (Down / Unchanged / Up)
+via the new `fill_palette` argument. Mirrors `sample_dice_miRNA`.
+
+![miRNA dysregulation direction](images/ggport_mirna_direction.png)
+
+**ZEBRA Sex DEGs domino plot** — 9 genes × 27 cell types × 5 disease
+contrasts, after filtering to `PValue < 0.05`. Mirrors `ZEBRA_domino_example.png`.
+
+![ZEBRA domino](images/ggport_zebra_domino.png)
+
+### Creative n=9 example
+
+A fully populated 3×3 die face: nine canonical signaling pathways
+(Wnt, Notch, Hedgehog, TGF-β, Hippo, PI3K-AKT, MAPK, JAK-STAT, NF-κB) per
+cell-type × treatment tile. Pip colour = Log2FC, pip size = -log10 q.
+The synthetic data boosts biologically plausible pathway hits: fibroblasts
+respond to TGF-β1 via TGF-β, macrophages activate NF-κB / JAK-STAT / MAPK
+under LPS, intestinal stem cells light up Wnt under WNT3A, and so on.
+
+![9 signaling pathways per die face](images/ggport_pathways_nine.png)
 
 ## Install
 
@@ -122,11 +162,12 @@ fig.save("./plots", "dice_continuous", formats=".png")
 dice_plot(
     data, cat_a, cat_b, cat_c, *,
     # Mode selection
-    cat_c_colors=None,        # dict → categorical mode
-    fill_col=None,            # str → continuous per-pip fill
+    cat_c_colors=None,        # dict → categorical (colour per cat_c)
+    fill_col=None,            # str → per-pip fill column
+    fill_palette=None,        # dict → discrete colour per fill_col value
     size_col=None,            # str → continuous per-pip size
     # Ordering
-    cat_a_order=None, cat_b_order=None, switch_axis=False,
+    cat_a_order=None, cat_b_order=None, cat_c_order=None, switch_axis=False,
     # Dice shape
     ndots=None, pip_scale=0.85, cell_width=0.85, cell_height=0.85,
     grid_lines=False,

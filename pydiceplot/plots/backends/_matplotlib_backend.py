@@ -40,10 +40,12 @@ def plot_dice(
     # mode selection
     cat_c_colors: Optional[dict] = None,
     fill_col: Optional[str] = None,
+    fill_palette: Optional[dict] = None,
     size_col: Optional[str] = None,
     # ordering
     cat_a_order=None,
     cat_b_order=None,
+    cat_c_order=None,
     switch_axis: bool = False,
     # dice shape
     ndots: Optional[int] = None,
@@ -76,9 +78,11 @@ def plot_dice(
         data, cat_a, cat_b, cat_c,
         cat_c_colors=cat_c_colors,
         fill_col=fill_col,
+        fill_palette=fill_palette,
         size_col=size_col,
         cat_a_order=cat_a_order,
         cat_b_order=cat_b_order,
+        cat_c_order=cat_c_order,
         max_dice_sides=max_dice_sides,
     )
     if ndots is not None:
@@ -244,7 +248,12 @@ def _draw_dice_grid(
                 sv = pt.dot_sizes[k] if k < len(pt.dot_sizes) else None
                 if fv is None and sv is None:
                     continue
-                r = scaled_pip_radius(layout, sv, smin, smax) if sv is not None else layout.base_pip_r * 0.6
+                if dp.size_extent is not None:
+                    # size mapping active: missing size → min, present → scaled
+                    r = scaled_pip_radius(layout, sv, smin, smax)
+                else:
+                    # fill-only: all pips at full base radius
+                    r = layout.base_pip_r
                 color = mcolors.to_hex(cmap(_norm(fv, fmin, fmax))) if fv is not None else "#444444"
                 ax.add_patch(patches.Circle((px, py), r, facecolor=color, edgecolor="none", zorder=3))
 

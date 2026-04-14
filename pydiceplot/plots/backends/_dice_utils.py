@@ -66,9 +66,11 @@ def preprocess_dice_plot(
     cat_c: str,
     cat_c_colors: Optional[dict] = None,
     fill_col: Optional[str] = None,
+    fill_palette: Optional[dict] = None,
     size_col: Optional[str] = None,
     cat_a_order: Optional[Sequence[str]] = None,
     cat_b_order: Optional[Sequence[str]] = None,
+    cat_c_order: Optional[Sequence[str]] = None,
     max_dice_sides: int = 9,
 ) -> DicePlotData:
     """Turn long-format `data` into a `DicePlotData` ready for rendering.
@@ -78,10 +80,15 @@ def preprocess_dice_plot(
     data : DataFrame with columns `cat_a`, `cat_b`, `cat_c` (+ optional
         `fill_col`, `size_col`). One row per present pip slot.
     cat_c_colors : dict mapping cat_c label → hex color. If provided, the
-        plot is categorical (pips coloured by `cat_c`). The dict key order
-        determines the pip slot order.
+        plot is categorical with pips coloured by `cat_c`. Key order sets
+        pip slot order.
+    fill_palette : dict mapping `fill_col` value → hex color. If provided,
+        the plot is categorical with pips coloured by `fill_col` instead of
+        `cat_c`. Use together with `cat_c_order` (or a factor on `cat_c`)
+        to set the pip slot order.
     fill_col, size_col : column names for continuous per-pip encoding.
-        Providing either switches the plot to per-dot mode.
+        Supplying `fill_col` with `fill_palette` is discrete; supplying
+        either without a palette is continuous.
     """
     missing = [c for c in (cat_a, cat_b, cat_c) if c not in data.columns]
     if missing:
@@ -92,8 +99,14 @@ def preprocess_dice_plot(
     if size_col is not None and size_col not in data.columns:
         raise KeyError(f"dice_plot: size_col '{size_col}' not in data")
 
-    per_dot_mode = fill_col is not None or size_col is not None
-    mode = "per_dot" if per_dot_mode else "categorical"
+    if cat_c_colors is not None and fill_palette is not None:
+        raise ValueError(
+            "dice_plot: pass either `cat_c_colors` or `fill_palette`, not both"
+        )
+
+    discrete_fill = fill_palette is not None
+    continuous_per_dot = not discrete_fill and (fill_col is not None or size_col is not None)
+    mode = "per_dot" if continuous_per_dot else "categorical"
 
     # ── Determine category orders ──────────────────────────────────────────
     if cat_a_order is None:
@@ -103,6 +116,8 @@ def preprocess_dice_plot(
 
     if cat_c_colors is not None:
         category_labels = list(cat_c_colors.keys())
+    elif cat_c_order is not None:
+        category_labels = list(cat_c_order)
     else:
         category_labels = _sorted_unique(data[cat_c])
 
@@ -113,14 +128,13 @@ def preprocess_dice_plot(
             f"1..{max_dice_sides}"
         )
 
-    # Auto-generate categorical colors when not supplied (and in categorical mode)
-    if mode == "categorical" and cat_c_colors is None:
+    # Auto-generate categorical colors when not supplied (and no palette)
+    if mode == "categorical" and cat_c_colors is None and fill_palette is None:
         cat_c_colors = dict(zip(category_labels, generate_automatic_colors(ndots)))
 
     # ── Build per-tile DicePoint records ───────────────────────────────────
     slot_index = {label: i for i, label in enumerate(category_labels)}
 
-    # Warn (don't crash) on rows whose cat_c isn't in the slot list
     valid = data[cat_c].isin(category_labels)
     if not valid.all():
         dropped = data.loc[~valid, cat_c].unique().tolist()
@@ -130,7 +144,6 @@ def preprocess_dice_plot(
         )
         data = data.loc[valid]
 
-    # Aggregate rows into points keyed by (x_cat, y_cat)
     points_map: dict[tuple, DicePoint] = {}
     for _, row in data.iterrows():
         key = (row[cat_a], row[cat_b])
@@ -146,7 +159,12 @@ def preprocess_dice_plot(
             points_map[key] = pt
         slot = slot_index[row[cat_c]]
         if mode == "categorical":
-            pt.dot_colors[slot] = cat_c_colors[row[cat_c]]
+            if discrete_fill:
+                fv = row[fill_col]
+                if pd.notna(fv):
+                    pt.dot_colors[slot] = fill_palette.get(fv)
+            else:
+                pt.dot_colors[slot] = cat_c_colors[row[cat_c]]
         else:
             if fill_col is not None:
                 v = row[fill_col]
@@ -168,12 +186,16 @@ def preprocess_dice_plot(
         if all_sizes:
             size_extent = (float(min(all_sizes)), float(max(all_sizes)))
 
+    # If a discrete fill palette was used, expose it via cat_c_colors so the
+    # dot-color legend section can render entries for the actual fill values.
+    legend_colors = cat_c_colors if cat_c_colors is not None else fill_palette
+
     return DicePlotData(
         points=points,
         x_categories=list(cat_a_order),
         y_categories=list(cat_b_order),
         category_labels=category_labels,
-        cat_c_colors=cat_c_colors,
+        cat_c_colors=legend_colors,
         ndots=ndots,
         mode=mode,
         fill_extent=fill_extent,
