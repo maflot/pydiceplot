@@ -1,7 +1,7 @@
 [workspace]
 name = "pydiceplot"
-version = "0.0.3"
-description = "Plot multidimensional categorical data"
+version = "1.0.0"
+description = "Dice plots for high-dimensional categorical data"
 channels = ["conda-forge"]
 platforms = ["osx-arm64"]
 
@@ -14,6 +14,8 @@ plotly = ">=5.15"
 scipy = ">=1.10"
 python-kaleido = "*"
 pytest = "*"
+python-build = "*"
+twine = "*"
 
 [pypi-dependencies]
 pydiceplot = { path = ".", editable = true }
@@ -21,3 +23,5 @@ pydiceplot = { path = ".", editable = true }
 [tasks]
 test = "pytest tests -v"
 example = "python -m example_code.example"
+build = { cmd = "rm -rf dist build *.egg-info && python -m build", description = "Build sdist + wheel" }
+check = { cmd = "python -m twine check dist/*", description = "Validate built artifacts" }
