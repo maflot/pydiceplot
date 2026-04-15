@@ -16,8 +16,8 @@ import pytest
 from pydiceplot.plots.backends._layout import (
     DICE_POSITIONS,
     compute_dice_layout,
-    dot_grid_positions,
-    dot_offsets,
+    pip_grid_positions,
+    pip_offsets,
     scaled_pip_radius,
 )
 
@@ -45,8 +45,8 @@ TRADITIONAL_OFFSETS = {
 
 
 @pytest.mark.parametrize("n", [1, 2, 3, 4, 5, 6, 7, 8, 9])
-def test_dot_offsets_match_traditional_die_faces(n):
-    offs = dot_offsets(n, cell_width=1.0, cell_height=1.0, pad=0.1)
+def test_pip_offsets_match_traditional_die_faces(n):
+    offs = pip_offsets(n, cell_width=1.0, cell_height=1.0, pad=0.1)
     expected = TRADITIONAL_OFFSETS[n]
     assert len(offs) == len(expected)
     for (dx, dy_down), (ex, ey_up) in zip(offs, expected):
@@ -68,14 +68,14 @@ def test_dice_positions_table():
 
 
 def test_grid_positions_are_row_col():
-    """`dot_grid_positions(4)` → TL, TR, BL, BR as (row, col)."""
-    grid = dot_grid_positions(4)
+    """`pip_grid_positions(4)` → TL, TR, BL, BR as (row, col)."""
+    grid = pip_grid_positions(4)
     assert grid == [(0, 0), (0, 2), (2, 0), (2, 2)]
 
 
 def test_grid_positions_for_six_are_two_columns():
     """n=6 must be two vertical columns: TL, TR, ML, MR, BL, BR."""
-    assert dot_grid_positions(6) == [
+    assert pip_grid_positions(6) == [
         (0, 0), (0, 2),
         (1, 0), (1, 2),
         (2, 0), (2, 2),
@@ -86,7 +86,7 @@ def test_compute_dice_layout_centres_square_grid():
     lay = compute_dice_layout(
         n_x=4, n_y=2,
         plot_width=100.0, plot_height=100.0,
-        cell_width=0.8, cell_height=0.8, ndots=4,
+        cell_width=0.8, cell_height=0.8, npips=4,
     )
     # Square cell = min(100/4, 100/2) = 25
     assert lay.cell_sq == pytest.approx(25.0)
@@ -101,15 +101,15 @@ def test_compute_dice_layout_centres_square_grid():
 
 def test_compute_dice_layout_rejects_bad_inputs():
     with pytest.raises(ValueError):
-        compute_dice_layout(n_x=0, n_y=2, plot_width=100, plot_height=100, ndots=4)
+        compute_dice_layout(n_x=0, n_y=2, plot_width=100, plot_height=100, npips=4)
     with pytest.raises(ValueError):
-        compute_dice_layout(n_x=2, n_y=2, plot_width=100, plot_height=100, ndots=10)
+        compute_dice_layout(n_x=2, n_y=2, plot_width=100, plot_height=100, npips=10)
 
 
 def test_scaled_pip_radius_clamps_and_maps():
     lay = compute_dice_layout(
         n_x=2, n_y=2, plot_width=60, plot_height=60,
-        cell_width=0.8, cell_height=0.8, ndots=4,
+        cell_width=0.8, cell_height=0.8, npips=4,
     )
     base = lay.base_pip_r
     # None → min_fill (0.25)

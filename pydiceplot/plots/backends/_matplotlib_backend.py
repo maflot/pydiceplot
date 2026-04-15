@@ -1,31 +1,29 @@
-"""Matplotlib backend for DicePlot / DominoPlot.
+"""Matplotlib backend for dice plots.
 
-The dice plot is rendered in a main `Axes` whose data coordinates are the
-category grid (x ∈ [0.5, n_x + 0.5], y ∈ [0.5, n_y + 0.5]). Legends are drawn
-into a sibling `Axes` on the right. The legend stack order matches kuva's
-`add_dice_legends`: position → dots → size → colorbar.
+Public entry point: `plot_dice(...)`. Returns `(Figure, Axes)` when we own
+the figure, or just `Axes` when the caller provided `ax=`. In the `ax=` path
+we skip the right-side legend stack — the caller is composing their own
+layout, so a second axes would fight with their figure.
 """
 
 from __future__ import annotations
 
 import os
-from typing import Optional
+from typing import Optional, Tuple, Union
 
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-import matplotlib.cm as mpl_cm
 import matplotlib.colors as mcolors
-import numpy as np
+import matplotlib.cm as mpl_cm
 
 from ._dice_utils import DicePlotData, preprocess_dice_plot
 from ._layout import (
-    compute_dice_layout,
-    dot_grid_positions,
-    scaled_pip_radius,
     DiceLayout,
+    compute_dice_layout,
+    pip_grid_positions,
+    scaled_pip_radius,
 )
-from ._domino_utils import preprocess_domino_plot, switch_axes_domino
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -34,123 +32,99 @@ from ._domino_utils import preprocess_domino_plot, switch_axes_domino
 
 def plot_dice(
     data,
-    cat_a: str,
-    cat_b: str,
-    cat_c: str,
-    # mode selection
-    cat_c_colors: Optional[dict] = None,
-    fill_col: Optional[str] = None,
+    x: str,
+    y: str,
+    pips: str,
+    *,
+    # pip encoding
+    pip_colors: Optional[dict] = None,
+    fill: Optional[str] = None,
     fill_palette: Optional[dict] = None,
-    size_col: Optional[str] = None,
+    size: Optional[str] = None,
     # ordering
-    cat_a_order=None,
-    cat_b_order=None,
-    cat_c_order=None,
-    switch_axis: bool = False,
-    # dice shape
-    ndots: Optional[int] = None,
+    x_order=None,
+    y_order=None,
+    pips_order=None,
+    # dice geometry
+    npips: Optional[int] = None,
     pip_scale: float = 0.85,
-    cell_width: float = 0.85,
-    cell_height: float = 0.85,
+    tile_width: float = 0.85,
+    tile_height: float = 0.85,
     grid_lines: bool = False,
-    # color scales
+    # colour scales
     fill_range=None,
     size_range=None,
-    color_map: str = "viridis",
+    cmap: str = "viridis",
     # labels
     title: Optional[str] = None,
-    cat_a_labs: Optional[str] = None,
-    cat_b_labs: Optional[str] = None,
-    cat_c_labs: Optional[str] = None,
-    fill_legend_label: Optional[str] = None,
-    size_legend_label: Optional[str] = None,
-    position_legend_label: Optional[str] = None,
-    # dimensions
-    fig_width: Optional[float] = None,
-    fig_height: Optional[float] = None,
-    max_dice_sides: int = 9,
-    # legacy ignored
-    group=None,
-    group_colors=None,
-    group_alpha=0.6,
-):
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    fill_label: Optional[str] = None,
+    size_label: Optional[str] = None,
+    pips_label: Optional[str] = None,
+    # plot target
+    ax: Optional[plt.Axes] = None,
+    figsize: Optional[Tuple[float, float]] = None,
+    max_pips: int = 9,
+) -> Union[Tuple[plt.Figure, plt.Axes], plt.Axes]:
+    """Render a dice plot onto a matplotlib Axes.
+
+    Returns `(Figure, Axes)` when we create the figure, or just `Axes` when
+    the caller passes `ax=`.
+    """
     dp = preprocess_dice_plot(
-        data, cat_a, cat_b, cat_c,
-        cat_c_colors=cat_c_colors,
-        fill_col=fill_col,
-        fill_palette=fill_palette,
-        size_col=size_col,
-        cat_a_order=cat_a_order,
-        cat_b_order=cat_b_order,
-        cat_c_order=cat_c_order,
-        max_dice_sides=max_dice_sides,
+        data, x, y, pips,
+        pip_colors=pip_colors, fill=fill, fill_palette=fill_palette, size=size,
+        x_order=x_order, y_order=y_order, pips_order=pips_order,
+        max_pips=max_pips,
     )
-    if ndots is not None:
-        dp.ndots = ndots
+    if npips is not None:
+        dp.npips = npips
 
-    if switch_axis:
-        dp.x_categories, dp.y_categories = dp.y_categories, dp.x_categories
-        for p in dp.points:
-            p.x_cat, p.y_cat = p.y_cat, p.x_cat
-
-    # Default legend labels
-    if fill_col and fill_legend_label is None:
-        fill_legend_label = fill_col
-    if size_col and size_legend_label is None:
-        size_legend_label = size_col
-    if position_legend_label is None:
-        position_legend_label = cat_c_labs or cat_c
-
-    # Figure sizing
-    n_x, n_y = dp.n_x, dp.n_y
-    if fig_width is None or fig_height is None:
-        base = 0.6
-        fig_width = max(n_x * base + 4.0, 6.0)
-        fig_height = max(n_y * base + 2.0, 4.0)
-
-    fig = plt.figure(figsize=(fig_width, fig_height), constrained_layout=False)
-    # Main + legend axes split
-    gs = fig.add_gridspec(1, 2, width_ratios=[3, 1.1], wspace=0.05)
-    ax = fig.add_subplot(gs[0, 0])
-    legend_ax = fig.add_subplot(gs[0, 1])
-    legend_ax.set_axis_off()
+    owns_figure = ax is None
+    if owns_figure:
+        n_x, n_y = dp.n_x, dp.n_y
+        if figsize is None:
+            base = 0.6
+            figsize = (max(n_x * base + 4.0, 6.0), max(n_y * base + 2.0, 4.0))
+        fig = plt.figure(figsize=figsize)
+        gs = fig.add_gridspec(1, 2, width_ratios=[3, 1.1], wspace=0.05)
+        ax = fig.add_subplot(gs[0, 0])
+        legend_ax = fig.add_subplot(gs[0, 1])
+        legend_ax.set_axis_off()
+    else:
+        fig = ax.figure
+        legend_ax = None
 
     _draw_dice_grid(
         ax, dp,
-        pip_scale=pip_scale,
-        cell_width=cell_width,
-        cell_height=cell_height,
-        grid_lines=grid_lines,
-        fill_range=fill_range,
-        size_range=size_range,
-        color_map=color_map,
+        pip_scale=pip_scale, tile_width=tile_width, tile_height=tile_height,
+        grid_lines=grid_lines, fill_range=fill_range, size_range=size_range,
+        cmap=cmap,
     )
 
-    # Axis labels / title
-    if cat_a_labs is not None:
-        ax.set_xlabel(cat_a_labs)
-    elif not switch_axis:
-        ax.set_xlabel(cat_a)
-    if cat_b_labs is not None:
-        ax.set_ylabel(cat_b_labs)
-    elif not switch_axis:
-        ax.set_ylabel(cat_b)
-    if title:
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    elif owns_figure:
+        ax.set_xlabel(x)
+    if ylabel is not None:
+        ax.set_ylabel(ylabel)
+    elif owns_figure:
+        ax.set_ylabel(y)
+    if title is not None:
         ax.set_title(title)
 
-    _draw_legend_stack(
-        legend_ax, dp,
-        position_legend_label=position_legend_label,
-        fill_legend_label=fill_legend_label,
-        size_legend_label=size_legend_label,
-        fill_range=fill_range,
-        size_range=size_range,
-        color_map=color_map,
-        fig=fig,
-        main_ax=ax,
-    )
+    if legend_ax is not None:
+        _draw_legend_stack(
+            legend_ax, dp,
+            pips_label=pips_label or pips,
+            fill_label=fill_label or fill,
+            size_label=size_label or size,
+            fill_range=fill_range, size_range=size_range, cmap=cmap,
+            fig=fig,
+        )
 
-    return fig
+    return (fig, ax) if owns_figure else ax
 
 
 # ───────────────────────────────────────────────────────────────────────────
@@ -158,47 +132,40 @@ def plot_dice(
 # ───────────────────────────────────────────────────────────────────────────
 
 def _draw_dice_grid(
-    ax, dp: DicePlotData, *,
-    pip_scale: float, cell_width: float, cell_height: float,
-    grid_lines: bool,
-    fill_range, size_range, color_map: str,
+    ax: plt.Axes, dp: DicePlotData, *,
+    pip_scale: float, tile_width: float, tile_height: float,
+    grid_lines: bool, fill_range, size_range, cmap: str,
 ):
     n_x, n_y = dp.n_x, dp.n_y
 
-    # Work in data units: one cell = 1×1, grid spans [0.5 .. n+0.5]
     ax.set_xlim(0.5, n_x + 0.5)
     ax.set_ylim(0.5, n_y + 0.5)
     ax.invert_yaxis()
     ax.set_aspect("equal", adjustable="box")
 
-    # Layout in data units — plot_width = n_x, plot_height = n_y.
     layout = compute_dice_layout(
         n_x=n_x, n_y=n_y,
         plot_width=float(n_x), plot_height=float(n_y),
         plot_x0=0.5, plot_y0=0.5,
-        cell_width=cell_width, cell_height=cell_height,
-        pip_scale=pip_scale, ndots=max(dp.ndots, 1),
+        cell_width=tile_width, cell_height=tile_height,
+        pip_scale=pip_scale, npips=max(dp.npips, 1),
     )
 
-    # Tick labels
     ax.set_xticks([i + 1 for i in range(n_x)])
     ax.set_xticklabels(dp.x_categories, rotation=45, ha="right")
     ax.set_yticks([i + 1 for i in range(n_y)])
     ax.set_yticklabels(dp.y_categories)
     ax.tick_params(axis="both", length=3, pad=2)
-    for spine_name in ("top", "right"):
-        ax.spines[spine_name].set_visible(False)
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
 
-    cmap = matplotlib.colormaps.get_cmap(color_map)
-
-    # Color scale extents
+    cmap_obj = matplotlib.colormaps.get_cmap(cmap)
     fmin, fmax = fill_range or dp.fill_extent or (0.0, 1.0)
     smin, smax = size_range or dp.size_extent or (0.0, 1.0)
 
     x_idx = {c: i for i, c in enumerate(dp.x_categories)}
     y_idx = {c: i for i, c in enumerate(dp.y_categories)}
 
-    # Tiles
     for pt in dp.points:
         xi = x_idx.get(pt.x_cat)
         yi = y_idx.get(pt.y_cat)
@@ -207,54 +174,43 @@ def _draw_dice_grid(
         cx, cy = layout.tile_center(xi, yi)
         half = layout.tile_sq / 2.0
 
-        # Tile fill
-        tile_face = "white"
-        if dp.mode == "tile" and pt.tile_fill is not None:
-            tile_face = mcolors.to_hex(cmap(_norm(pt.tile_fill, fmin, fmax)))
-        rect = patches.Rectangle(
+        ax.add_patch(patches.Rectangle(
             (cx - half, cy - half),
             layout.tile_sq, layout.tile_sq,
-            linewidth=0.6,
-            edgecolor="#888888",
-            facecolor=tile_face,
-        )
-        ax.add_patch(rect)
+            linewidth=0.6, edgecolor="#888888", facecolor="white",
+        ))
 
         if grid_lines:
             for i in (1, 2):
                 frac = i / 3.0
                 ax.plot(
-                    [cx - half + frac * layout.tile_sq, cx - half + frac * layout.tile_sq],
+                    [cx - half + frac * layout.tile_sq] * 2,
                     [cy - half, cy + half],
                     color="#cccccc", linewidth=0.4, zorder=1,
                 )
                 ax.plot(
                     [cx - half, cx + half],
-                    [cy - half + frac * layout.tile_sq, cy - half + frac * layout.tile_sq],
+                    [cy - half + frac * layout.tile_sq] * 2,
                     color="#cccccc", linewidth=0.4, zorder=1,
                 )
 
-        # Pips
-        pip_centers = layout.pip_centers(cx, cy, y_down=True)
-        for k, (px, py) in enumerate(pip_centers):
+        for k, (px, py) in enumerate(layout.pip_centers(cx, cy, y_down=True)):
             if dp.mode == "categorical":
-                color = pt.dot_colors[k] if k < len(pt.dot_colors) else None
+                color = pt.pip_colors[k] if k < len(pt.pip_colors) else None
                 if color is None:
                     continue
                 r = layout.base_pip_r * pip_scale
                 ax.add_patch(patches.Circle((px, py), r, facecolor=color, edgecolor="none", zorder=3))
-            elif dp.mode == "per_dot":
-                fv = pt.dot_fills[k] if k < len(pt.dot_fills) else None
-                sv = pt.dot_sizes[k] if k < len(pt.dot_sizes) else None
+            else:  # per_dot
+                fv = pt.pip_fills[k] if k < len(pt.pip_fills) else None
+                sv = pt.pip_sizes[k] if k < len(pt.pip_sizes) else None
                 if fv is None and sv is None:
                     continue
                 if dp.size_extent is not None:
-                    # size mapping active: missing size → min, present → scaled
                     r = scaled_pip_radius(layout, sv, smin, smax)
                 else:
-                    # fill-only: all pips at full base radius
                     r = layout.base_pip_r
-                color = mcolors.to_hex(cmap(_norm(fv, fmin, fmax))) if fv is not None else "#444444"
+                color = mcolors.to_hex(cmap_obj(_norm(fv, fmin, fmax))) if fv is not None else "#444444"
                 ax.add_patch(patches.Circle((px, py), r, facecolor=color, edgecolor="none", zorder=3))
 
 
@@ -269,54 +225,42 @@ def _norm(v, vmin, vmax):
 # ───────────────────────────────────────────────────────────────────────────
 
 def _draw_legend_stack(
-    lax, dp: DicePlotData, *,
-    position_legend_label: Optional[str],
-    fill_legend_label: Optional[str],
-    size_legend_label: Optional[str],
-    fill_range, size_range, color_map: str,
-    fig, main_ax,
+    lax: plt.Axes, dp: DicePlotData, *,
+    pips_label: Optional[str],
+    fill_label: Optional[str],
+    size_label: Optional[str],
+    fill_range, size_range, cmap: str,
+    fig: plt.Figure,
 ):
-    """Draw the stacked legends inside `lax` (a disabled axes on the right).
-
-    Each section is positioned in axes-fraction coordinates (0..1) and returns
-    the y cursor for the next section.
-    """
     lax.set_xlim(0, 1)
     lax.set_ylim(0, 1)
 
-    cursor = 0.98  # top-of-legend in axes-fraction
+    cursor = 0.98
 
-    if position_legend_label and dp.ndots > 0:
-        cursor = _legend_position(lax, dp, position_legend_label, cursor)
+    if pips_label and dp.npips > 0:
+        cursor = _legend_position(lax, dp, pips_label, cursor)
         cursor -= 0.03
 
-    if dp.mode == "categorical" and dp.cat_c_colors:
-        cursor = _legend_dot_colors(lax, dp, cursor)
+    if dp.mode == "categorical" and dp.pip_colors:
+        cursor = _legend_pip_colors(lax, dp, cursor)
         cursor -= 0.03
 
-    if dp.mode == "per_dot" and dp.size_extent is not None and size_legend_label:
-        cursor = _legend_size(lax, dp, size_legend_label, size_range or dp.size_extent, cursor)
+    if dp.mode == "per_dot" and dp.size_extent is not None and size_label:
+        cursor = _legend_size(lax, dp, size_label, size_range or dp.size_extent, cursor)
         cursor -= 0.03
 
-    if dp.mode == "per_dot" and dp.fill_extent is not None and fill_legend_label:
+    if dp.mode == "per_dot" and dp.fill_extent is not None and fill_label:
         _legend_colorbar(
-            lax, dp, fill_legend_label,
-            fill_range or dp.fill_extent, color_map,
+            lax, dp, fill_label,
+            fill_range or dp.fill_extent, cmap,
             fig=fig, cursor=cursor,
         )
 
 
 def _legend_position(lax, dp: DicePlotData, title: str, y_top: float) -> float:
-    """Draw a big die face with pip + category label stacked inside each cell.
-
-    Matches kuva's `add_dice_position_legend`: each of the 3×3 die cells has
-    its upper half reserved for a pip and lower half for the label.
-    """
-    # Axes-fraction geometry — grow box to fit labels, scaling with label length
     box_pad = 0.015
     x0, x1 = 0.02, 0.98
     title_h = 0.028
-    # Each cell: upper half for pip, lower half for label. 3 rows × row_h
     row_h = 0.055
     die_h = 3 * row_h
     total_h = title_h + die_h + 2 * box_pad
@@ -341,13 +285,11 @@ def _legend_position(lax, dp: DicePlotData, title: str, y_top: float) -> float:
     cell_w = die_w / 3.0
     cell_h = die_hh / 3.0
 
-    # Die face outline
     lax.add_patch(patches.Rectangle(
         (die_x0, die_y0), die_w, die_hh,
         facecolor="white", edgecolor="#666666", linewidth=0.8,
         transform=lax.transAxes, clip_on=False,
     ))
-    # 3×3 dashed internal grid
     for i in (1, 2):
         lax.plot(
             [die_x0 + i * cell_w, die_x0 + i * cell_w], [die_y0, die_y1],
@@ -360,21 +302,16 @@ def _legend_position(lax, dp: DicePlotData, title: str, y_top: float) -> float:
             transform=lax.transAxes, clip_on=False,
         )
 
-    # Pips in upper third of cell, label in lower two-thirds.
-    # Font size scales down when labels are many or long (cell_w shrinks as ndots grows).
-    longest = max((len(l) for l in dp.category_labels), default=0)
+    longest = max((len(l) for l in dp.pip_labels), default=0)
     label_fs = 8
-    if dp.ndots >= 5 or longest >= 10:
+    if dp.npips >= 5 or longest >= 10:
         label_fs = 6
-    if dp.ndots >= 6 and longest >= 12:
+    if dp.npips >= 6 and longest >= 12:
         label_fs = 5
 
-    # Collect pip centers for a single scatter call — scatter markers render
-    # as true circles regardless of axes aspect ratio (unlike patches.Circle
-    # in axes-fraction coords, which gets sheared into an ellipse).
     pip_xs: list[float] = []
     pip_ys: list[float] = []
-    for k, (row, col) in enumerate(dot_grid_positions(dp.ndots)):
+    for k, (row, col) in enumerate(pip_grid_positions(dp.npips)):
         cell_x0 = die_x0 + col * cell_w
         cell_y1 = die_y1 - row * cell_h
         pip_cx = cell_x0 + cell_w / 2
@@ -383,7 +320,7 @@ def _legend_position(lax, dp: DicePlotData, title: str, y_top: float) -> float:
         pip_xs.append(pip_cx)
         pip_ys.append(pip_cy)
 
-        label = dp.category_labels[k] if k < len(dp.category_labels) else ""
+        label = dp.pip_labels[k] if k < len(dp.pip_labels) else ""
         if label_fs <= 5 and len(label) > 14:
             label = label[:12] + "…"
         lax.text(pip_cx, label_cy, label, ha="center", va="center", fontsize=label_fs,
@@ -397,8 +334,8 @@ def _legend_position(lax, dp: DicePlotData, title: str, y_top: float) -> float:
     return box_bot
 
 
-def _legend_dot_colors(lax, dp: DicePlotData, y_top: float) -> float:
-    n = len(dp.cat_c_colors)
+def _legend_pip_colors(lax, dp: DicePlotData, y_top: float) -> float:
+    n = len(dp.pip_colors)
     row_h = 0.035
     box_pad = 0.02
     title_h = 0.03
@@ -414,7 +351,7 @@ def _legend_dot_colors(lax, dp: DicePlotData, y_top: float) -> float:
              "Category", ha="center", va="center", fontweight="bold", fontsize=10,
              transform=lax.transAxes)
     xs, ys, cs = [], [], []
-    for i, (label, color) in enumerate(dp.cat_c_colors.items()):
+    for i, (label, color) in enumerate(dp.pip_colors.items()):
         ry = y_top - title_h - box_pad - (i + 0.5) * row_h
         xs.append(x0 + 0.08)
         ys.append(ry)
@@ -429,11 +366,10 @@ def _legend_dot_colors(lax, dp: DicePlotData, y_top: float) -> float:
 def _legend_size(lax, dp: DicePlotData, title: str, srange, y_top: float) -> float:
     smin, smax = srange
     pcts = [0.25, 0.5, 1.0]
-    n = len(pcts)
     row_h = 0.045
     box_pad = 0.02
     title_h = 0.03
-    total_h = title_h + n * row_h + 2 * box_pad
+    total_h = title_h + len(pcts) * row_h + 2 * box_pad
     x0, x1 = 0.05, 0.95
     box_bot = y_top - total_h
     lax.add_patch(patches.Rectangle(
@@ -446,8 +382,6 @@ def _legend_size(lax, dp: DicePlotData, title: str, srange, y_top: float) -> flo
              transform=lax.transAxes)
     xs, ys, sizes = [], [], []
     for i, pct in enumerate(pcts):
-        # Marker area (points²) scales linearly with pct so visual diameter
-        # grows like sqrt(pct) — matches the radius relationship the plot uses.
         ry = y_top - title_h - box_pad - (i + 0.5) * row_h
         xs.append(x0 + 0.12)
         ys.append(ry)
@@ -460,17 +394,14 @@ def _legend_size(lax, dp: DicePlotData, title: str, srange, y_top: float) -> flo
     return box_bot
 
 
-def _legend_colorbar(lax, dp: DicePlotData, title: str, frange, color_map: str,
-                      fig, cursor: float):
-    """Add a real matplotlib colorbar at the bottom of the legend axes."""
+def _legend_colorbar(lax: plt.Axes, dp: DicePlotData, title: str, frange, cmap: str,
+                      fig: plt.Figure, cursor: float):
     fmin, fmax = frange
-    # Add an invisible ScalarMappable
     sm = mpl_cm.ScalarMappable(
         norm=mcolors.Normalize(vmin=fmin, vmax=fmax),
-        cmap=matplotlib.colormaps.get_cmap(color_map),
+        cmap=matplotlib.colormaps.get_cmap(cmap),
     )
     sm.set_array([])
-    # Compute colorbar axes in figure coords, under the legend axes
     lax_bbox = lax.get_position()
     cb_width = 0.018
     cb_height = min(0.35, max(0.15, cursor * lax_bbox.height - 0.02))
@@ -483,8 +414,12 @@ def _legend_colorbar(lax, dp: DicePlotData, title: str, frange, color_map: str,
 
 
 # ───────────────────────────────────────────────────────────────────────────
-# Domino (unchanged from previous implementation, minus the `Celltype` typo)
+# Legacy shims for the domino plot
+# (Kept for back-compat — the dice_plot rewrite leaves the domino code alone.)
 # ───────────────────────────────────────────────────────────────────────────
+
+from ._domino_utils import preprocess_domino_plot, switch_axes_domino  # noqa: E402
+
 
 def plot_domino(data, gene_list, switch_axis=False, min_dot_size=1, max_dot_size=5,
                 spacing_factor=3, var_id="var", feature_col="gene", celltype_col="CellType",
@@ -517,13 +452,13 @@ def plot_domino(data, gene_list, switch_axis=False, min_dot_size=1, max_dot_size
             ))
 
     from matplotlib.colors import LinearSegmentedColormap
-    cmap = LinearSegmentedColormap.from_list("custom", [
+    dcmap = LinearSegmentedColormap.from_list("custom", [
         (0.0, logfc_colors["low"]), (0.5, logfc_colors["mid"]), (1.0, logfc_colors["high"]),
     ])
     sc = ax.scatter(
         plot_data["x_pos"], plot_data["y_pos"],
         s=plot_data["size"] * 20, c=plot_data["adj_logfc"],
-        cmap=cmap, edgecolors="black",
+        cmap=dcmap, edgecolors="black",
     )
     cbar = plt.colorbar(sc, ax=ax)
     cbar.set_label(color_scale_name)
@@ -544,11 +479,8 @@ def plot_domino(data, gene_list, switch_axis=False, min_dot_size=1, max_dot_size
     return fig
 
 
-def show_plot(fig):
-    plt.show()
-
-
 def save_plot(fig, plot_path, output_str, formats):
+    """Deprecated shim — use `fig.savefig(...)` directly."""
     os.makedirs(plot_path, exist_ok=True)
     if isinstance(formats, str):
         formats = [formats]
@@ -556,3 +488,8 @@ def save_plot(fig, plot_path, output_str, formats):
         fmt = fmt if fmt.startswith(".") else f".{fmt}"
         file_path = os.path.join(plot_path, f"{output_str}{fmt}")
         fig.savefig(file_path, format=fmt.strip("."), bbox_inches="tight", dpi=150)
+
+
+def show_plot(fig):
+    """Deprecated shim — use `plt.show()`."""
+    plt.show()

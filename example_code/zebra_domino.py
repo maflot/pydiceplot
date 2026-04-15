@@ -2,15 +2,14 @@
 
 9 genes × up-to-27 cell types × 5 disease contrasts (MS-CT, AD-CT, ASD-CT,
 FTD-CT, HD-CT). Produces a 5-pip die face per cell where each pip encodes
-Log2FC as colour and -log10(FDR) as size — filtering to rows with p < 0.05
+Log2FC as colour and -log10(FDR) as size — filtered to rows with `PValue < 0.05`
 first so only significant contrasts show.
-
-Reference: create_demo_plots.R in ggdiceplot.
 """
 
 import math
 import os
 
+import matplotlib.pyplot as plt
 import pandas as pd
 
 import pydiceplot
@@ -32,8 +31,6 @@ def run(out_dir: str = "images") -> None:
     df = pd.read_csv(DATA)
     df = df[df["gene"].isin(GENES) & df["contrast"].isin(CONTRASTS) & (df["PValue"] < 0.05)].copy()
 
-    # Collapse duplicate (gene, cell_type, contrast) rows by averaging logFC
-    # and taking the strongest FDR — mirrors the R pipeline's group_by/summarise.
     agg = (
         df.groupby(["gene", "cell_type", "contrast"], as_index=False)
         .agg(logFC=("logFC", "mean"), FDR=("FDR", "min"))
@@ -42,25 +39,25 @@ def run(out_dir: str = "images") -> None:
 
     cell_types = sorted(agg["cell_type"].unique())
 
-    fig = dice_plot(
-        data=agg,
-        cat_a="gene",
-        cat_b="cell_type",
-        cat_c="contrast",
-        fill_col="logFC",
-        size_col="neg_log10_fdr",
-        cat_a_order=GENES,
-        cat_b_order=cell_types,
-        cat_c_order=CONTRASTS,
+    fig, _ = dice_plot(
+        agg,
+        x="gene", y="cell_type", pips="contrast",
+        fill="logFC", size="neg_log10_fdr",
+        x_order=GENES,
+        y_order=cell_types,
+        pips_order=CONTRASTS,
         title="ZEBRA Sex DEGs Domino Plot",
-        fill_legend_label="Log2FC",
-        size_legend_label="-log10(FDR)",
-        position_legend_label="contrast",
-        color_map="ggdiceplot_pg",
-        cell_width=0.9, cell_height=0.9,
-        fig_width=12, fig_height=14,
+        fill_label="Log2FC",
+        size_label="-log10(FDR)",
+        pips_label="contrast",
+        cmap="ggdiceplot_pg",
+        tile_width=0.9, tile_height=0.9,
+        figsize=(12, 14),
     )
-    fig.save(out_dir, "ggport_zebra_domino", formats=".png")
+    os.makedirs(out_dir, exist_ok=True)
+    fig.savefig(os.path.join(out_dir, "ggport_zebra_domino.png"),
+                bbox_inches="tight", dpi=150)
+    plt.close(fig)
 
 
 if __name__ == "__main__":

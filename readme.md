@@ -3,21 +3,124 @@
 [![PyPI version](https://badge.fury.io/py/pydiceplot.svg)](https://pypi.org/project/pydiceplot/)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/pydiceplot)
 
-**pydiceplot** creates dice plots — grids of dice-face icons that encode up
-to six categorical variables (one per pip slot) plus optional continuous
-fill and size mappings. It supports both `matplotlib` and `plotly` backends
-and is the Python sibling of the R package
-[`ggdiceplot`](https://github.com/maflot/ggdiceplot).
+**pydiceplot** draws dice plots: grids of die-face icons that encode up to
+nine categorical variables (one per pip slot) plus optional continuous fill
+and size mappings. It has matplotlib and plotly backends with a single
+seaborn-style `dice_plot(data, x, y, pips, ...)` entry point.
 
-The grid geometry and legend stack are ports of
-[`kuva`](https://github.com/Psy-Fer/kuva)'s `DicePlot`, which itself is a
-port of `ggdiceplot`'s `geom_dice` — so all three packages produce the same
-visual layout.
+It's the Python sibling of the R package
+[`ggdiceplot`](https://github.com/maflot/ggdiceplot). The grid geometry and
+legend stack are ports of
+[`kuva`](https://github.com/Psy-Fer/kuva)'s `DicePlot`, which is itself a
+port of `ggdiceplot::geom_dice` — so all three packages produce the same
+visual layout (with one intentional fix: n=6 is the traditional two-column
+die face rather than ggdiceplot's transposed two-row layout).
+
+## Install
+
+```bash
+pip install pydiceplot
+```
+
+For development against this repo:
+
+```bash
+git clone https://github.com/maflot/pydiceplot.git
+cd pydiceplot
+pixi install
+pixi run test     # 37 tests
+pixi run example  # regenerates the showcase images under images/
+pixi run build    # sdist + wheel in dist/
+```
+
+## Quick start
+
+Categorical mode — each pip is coloured by its `pips` value:
+
+```python
+import matplotlib.pyplot as plt
+import pydiceplot
+from pydiceplot import dice_plot
+from pydiceplot.plots.backends._dice_utils import (
+    get_diceplot_example_data, get_example_cat_c_colors,
+)
+
+pydiceplot.set_backend("matplotlib")
+data = get_diceplot_example_data(4)
+colors = dict(list(get_example_cat_c_colors().items())[:4])
+
+fig, ax = dice_plot(
+    data,
+    x="CellType", y="Pathway", pips="PathologyVariable",
+    pip_colors=colors,
+    title="Dice Plot with 4 Pathology Variables",
+    figsize=(9, 10),
+)
+fig.savefig("dice_4.png", dpi=150, bbox_inches="tight")
+```
+
+Per-pip continuous fill + size — mirrors ggdiceplot's
+`geom_dice(aes(dots=..., fill=lfc, size=-log10(q)))` (we rename `dots` →
+`pips` since the marks on a die are formally called pips):
+
+```python
+import numpy as np
+from pydiceplot import dice_plot
+
+rng = np.random.default_rng(1)
+data = get_diceplot_example_data(4)
+data["lfc"] = rng.normal(0, 1.2, len(data))
+data["nlq"] = rng.uniform(0.5, 4, len(data))
+
+fig, ax = dice_plot(
+    data,
+    x="CellType", y="Pathway", pips="PathologyVariable",
+    fill="lfc", size="nlq",
+    fill_label="Log2FC", size_label="-log10(q)",
+    cmap="RdBu_r",
+    title="Per-dot continuous",
+)
+```
+
+Plotly — same API, returns a `plotly.graph_objects.Figure`:
+
+```python
+pydiceplot.set_backend("plotly")
+fig = dice_plot(data, x="CellType", y="Pathway", pips="PathologyVariable",
+                fill="lfc", size="nlq", cmap="RdBu_r",
+                width=900, height=650)
+fig.write_image("dice.png")
+```
+
+Drawing into an existing axes (skips the built-in right-side legend stack so
+you can compose your own multi-panel figure):
+
+```python
+fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+dice_plot(data, x="CellType", y="Pathway", pips="PathologyVariable",
+          pip_colors=colors, ax=axes[0])
+axes[1].plot(range(10))
+```
+
+## Modes
+
+`dice_plot` has three input modes, picked by which arguments you pass:
+
+| Mode | Trigger | What each pip encodes |
+|------|---------|-----------------------|
+| **Categorical** | `pip_colors={label: hex, ...}` | filled circle in its category colour when present |
+| **Per-pip continuous** | `fill="col"` and/or `size="col"` | continuous colour and/or size from numeric columns |
+| **Per-pip discrete** | `fill="col"` + `fill_palette={value: hex, ...}` | colour per discrete fill value; pip slot still comes from `pips` |
+
+The legend stack on the right always includes a **position legend** showing
+which pip slot maps to which `pips` value, plus a colorbar and size legend
+when continuous mappings are active. That stacking matches
+`ggdiceplot::draw_key` semantics.
 
 ## Sample output
 
-Everything below is produced by `example_code/example.py`. Regenerate at any
-time with `pixi run example`.
+Everything below is produced by `example_code/example.py`. Regenerate with
+`pixi run example`.
 
 ### Quick tour
 
@@ -32,8 +135,8 @@ time with `pixi run example`.
 ### 1-to-1 ports of ggdiceplot's demo plots
 
 Each script in `example_code/` reproduces one of the figures from
-`ggdiceplot/demo_output/`. The data is loaded from exported CSVs shipped
-under `example_code/data/`.
+`ggdiceplot/demo_output/`, loading the original R sample data exported to
+CSV under `example_code/data/`.
 
 **Oral microbiome** — 8 taxa × 5 specimens × 4 diseases, per-pip Log2FC and
 -log10 q. Mirrors `sample_dice_data2` / `example2.png`.
@@ -46,13 +149,13 @@ under `example_code/data/`.
 ![Oral microbiome — fill only](images/ggport_oral_microbiome_fill_only.png)
 
 **miRNA × compound × organ, discrete direction** — the pip slot selects the
-organ, the pip colour encodes the regulation direction (Down / Unchanged / Up)
-via the new `fill_palette` argument. Mirrors `sample_dice_miRNA`.
+organ, the pip colour encodes the regulation direction (Down / Unchanged /
+Up) via `fill_palette`. Mirrors `sample_dice_miRNA`.
 
 ![miRNA dysregulation direction](images/ggport_mirna_direction.png)
 
 **ZEBRA Sex DEGs domino plot** — 9 genes × 27 cell types × 5 disease
-contrasts, after filtering to `PValue < 0.05`. Mirrors `ZEBRA_domino_example.png`.
+contrasts, filtered to `PValue < 0.05`. Mirrors `ZEBRA_domino_example.png`.
 
 ![ZEBRA domino](images/ggport_zebra_domino.png)
 
@@ -60,146 +163,67 @@ contrasts, after filtering to `PValue < 0.05`. Mirrors `ZEBRA_domino_example.png
 
 A fully populated 3×3 die face: nine canonical signaling pathways
 (Wnt, Notch, Hedgehog, TGF-β, Hippo, PI3K-AKT, MAPK, JAK-STAT, NF-κB) per
-cell-type × treatment tile. Pip colour = Log2FC, pip size = -log10 q.
-The synthetic data boosts biologically plausible pathway hits: fibroblasts
+cell-type × treatment tile. Pip colour = Log2FC, pip size = -log10 q. The
+synthetic data boosts biologically plausible pathway hits: fibroblasts
 respond to TGF-β1 via TGF-β, macrophages activate NF-κB / JAK-STAT / MAPK
 under LPS, intestinal stem cells light up Wnt under WNT3A, and so on.
 
 ![9 signaling pathways per die face](images/ggport_pathways_nine.png)
 
-## Install
-
-```bash
-pip install pydiceplot
-```
-
-Or, for development against this repo:
-
-```bash
-git clone https://github.com/maflot/pyDicePlot.git
-cd pyDicePlot
-pixi install      # or: pip install -e .
-pixi run test     # 25 tests
-pixi run example  # writes plots to ./plots
-```
-
-## Modes
-
-A dice plot has **three input modes**, picked by which arguments you pass:
-
-| Mode | Trigger | What each pip shows |
-|------|---------|---------------------|
-| **Categorical** | pass `cat_c_colors={label: hex, ...}` | filled circle in its category colour when present |
-| **Per-dot continuous** | pass `fill_col` and/or `size_col` | continuous colour and/or size from numeric columns |
-| Tile | (advanced) — wrap a one-row-per-tile DataFrame | one continuous value per tile |
-
-The legend stack (right-hand column) always includes a **position legend**
-showing which pip slot maps to which category, plus a colorbar/size legend
-when relevant. This matches `ggdiceplot::draw_key` semantics.
-
-## Categorical mode
-
-```python
-import pydiceplot
-from pydiceplot import dice_plot
-from pydiceplot.plots.backends._dice_utils import (
-    get_diceplot_example_data, get_example_cat_c_colors,
-)
-
-pydiceplot.set_backend("matplotlib")  # or "plotly"
-
-data = get_diceplot_example_data(4)
-colors = dict(list(get_example_cat_c_colors().items())[:4])
-
-fig = dice_plot(
-    data=data,
-    cat_a="CellType",
-    cat_b="Pathway",
-    cat_c="PathologyVariable",
-    cat_c_colors=colors,
-    title="Dice Plot with 4 Pathology Variables",
-)
-fig.save("./plots", "dice_4", formats=".png")
-```
-
-## Per-dot continuous mode
-
-This mirrors ggdiceplot's `geom_dice(aes(dots=cat_c, fill=lfc, size=-log10(q)))`:
-
-```python
-import numpy as np
-import pydiceplot
-from pydiceplot import dice_plot
-from pydiceplot.plots.backends._dice_utils import get_diceplot_example_data
-
-pydiceplot.set_backend("matplotlib")
-
-rng = np.random.default_rng(1)
-data = get_diceplot_example_data(4)
-data["lfc"] = rng.normal(0, 1.2, len(data))
-data["nlq"] = rng.uniform(0.5, 4, len(data))
-
-fig = dice_plot(
-    data=data,
-    cat_a="CellType",
-    cat_b="Pathway",
-    cat_c="PathologyVariable",
-    fill_col="lfc",
-    size_col="nlq",
-    fill_legend_label="Log2FC",
-    size_legend_label="-log10(q)",
-    color_map="RdBu_r",
-    title="Per-dot continuous",
-)
-fig.save("./plots", "dice_continuous", formats=".png")
-```
-
 ## API
 
-### `dice_plot()`
+### `dice_plot(data, x, y, pips, *, ...)`
 
 ```python
 dice_plot(
-    data, cat_a, cat_b, cat_c, *,
-    # Mode selection
-    cat_c_colors=None,        # dict → categorical (colour per cat_c)
-    fill_col=None,            # str → per-pip fill column
-    fill_palette=None,        # dict → discrete colour per fill_col value
-    size_col=None,            # str → continuous per-pip size
-    # Ordering
-    cat_a_order=None, cat_b_order=None, cat_c_order=None, switch_axis=False,
-    # Dice shape
-    ndots=None, pip_scale=0.85, cell_width=0.85, cell_height=0.85,
+    data, x, y, pips, *,
+    # pip encoding
+    pip_colors=None,       # dict {pips value: hex} — categorical colour per pip
+    fill=None,             # str — per-pip fill column (continuous or discrete)
+    fill_palette=None,     # dict {fill value: hex} — discrete fill lookup
+    size=None,             # str — numeric per-pip size column
+    # ordering
+    x_order=None, y_order=None, pips_order=None,
+    # dice geometry
+    npips=None, pip_scale=0.85,
+    tile_width=0.85, tile_height=0.85,
     grid_lines=False,
-    # Color scales
-    fill_range=None, size_range=None, color_map="viridis",
-    # Labels
-    title=None,
-    cat_a_labs=None, cat_b_labs=None, cat_c_labs=None,
-    fill_legend_label=None, size_legend_label=None, position_legend_label=None,
-    # Dimensions (inches for matplotlib, pixels for plotly)
-    fig_width=None, fig_height=None,
-    max_dice_sides=6,
+    # colour scales
+    fill_range=None, size_range=None, cmap="viridis",
+    # labels
+    title=None, xlabel=None, ylabel=None,
+    fill_label=None, size_label=None, pips_label=None,
+    # plot target
+    ax=None,                  # matplotlib: existing Axes (skips legend stack)
+    fig=None,                 # plotly: existing Figure (skips legend stack)
+    figsize=None,             # matplotlib: (width_in, height_in)
+    width=None, height=None,  # plotly: pixels
+    max_pips=9,
 )
 ```
 
-`dice_plot` returns an object with `.show()` and `.save(path, name, formats)`
-methods. The active backend is selected via `pydiceplot.set_backend(...)`.
+**Returns**
+
+- matplotlib: `(Figure, Axes)` when we create the figure, just `Axes` when
+  the caller supplies `ax=`.
+- plotly: `plotly.graph_objects.Figure`.
+
+Use the native save/show methods on the return value: `fig.savefig(...)` /
+`plt.show()` for matplotlib, `fig.write_image(...)` / `fig.show()` for plotly.
 
 ### Pip slot layout
 
-The 3×3 pip grid uses a column-major reading order so that dice faces match
-ggdiceplot exactly:
+The 3×3 pip grid uses natural row-major reading order:
 
 ```
-pos 1 (TL)  pos 4 (TM)  pos 7 (TR)
-pos 2 (ML)  pos 5 (MM)  pos 8 (MR)
-pos 3 (BL)  pos 6 (BM)  pos 9 (BR)
+pos 1 (TL)  pos 2 (TM)  pos 3 (TR)
+pos 4 (ML)  pos 5 (MM)  pos 6 (MR)
+pos 7 (BL)  pos 8 (BM)  pos 9 (BR)
 ```
 
 Dice sizes pick from this table (traditional die faces; n=6 is two vertical
-columns, not two horizontal rows — this is where we deliberately diverge from
-`ggdiceplot::make_offsets`, which renders the transposed layout):
+columns, unlike `ggdiceplot::make_offsets` which returns the transposed
+two-row layout — we deliberately diverge here):
 
 | n | positions | visual |
 |---|-----------|--------|
@@ -235,7 +259,7 @@ If you use this package, please cite:
 ## Related packages
 
 - [`ggdiceplot`](https://github.com/maflot/ggdiceplot) — the R / ggplot2 sibling
-- [`kuva`](https://github.com/Psy-Fer/kuva) — a Rust plotting library that includes a dice plot
+- [`kuva`](https://github.com/Psy-Fer/kuva) — a Rust plotting library that ships a dice plot
 
 ## License
 

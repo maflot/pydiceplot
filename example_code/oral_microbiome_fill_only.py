@@ -6,7 +6,7 @@ asks pips to fill their sub-cells maximally since size is constant.
 
 import os
 
-import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 
 import pydiceplot
@@ -24,21 +24,22 @@ def run(out_dir: str = "images") -> None:
 
     data = pd.read_csv(DATA)
 
-    fig = dice_plot(
-        data=data,
-        cat_a="specimen",
-        cat_b="taxon",
-        cat_c="disease",
-        fill_col="lfc",
+    fig, _ = dice_plot(
+        data,
+        x="specimen", y="taxon", pips="disease",
+        fill="lfc",
         title="Fill-only dice plot (pip_scale = 1.0)",
-        fill_legend_label="Log2FC",
-        position_legend_label="disease",
-        color_map="ggdiceplot_pg",
+        fill_label="Log2FC",
+        pips_label="disease",
+        cmap="ggdiceplot_pg",
         pip_scale=1.0,
-        cell_width=0.9, cell_height=0.9,
-        fig_width=10, fig_height=10,
+        tile_width=0.9, tile_height=0.9,
+        figsize=(10, 10),
     )
-    fig.save(out_dir, "ggport_oral_microbiome_fill_only", formats=".png")
+    os.makedirs(out_dir, exist_ok=True)
+    fig.savefig(os.path.join(out_dir, "ggport_oral_microbiome_fill_only.png"),
+                bbox_inches="tight", dpi=150)
+    plt.close(fig)
 
 
 if __name__ == "__main__":

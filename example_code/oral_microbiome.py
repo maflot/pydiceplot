@@ -3,12 +3,12 @@
 Data: `sample_dice_data2` — 8 oral microbiome taxa × 5 specimen sites
 × 4 disease states. Per-pip continuous fill (Log2FC) and size (-log10 q),
 rendered on a 4-pip die face.
-
-Reference: ggdiceplot/demo_output/create_demo_plots.R
 """
 
+import math
 import os
 
+import matplotlib.pyplot as plt
 import pandas as pd
 
 import pydiceplot
@@ -25,29 +25,24 @@ def run(out_dir: str = "images") -> None:
     pydiceplot.set_backend("matplotlib")
 
     data = pd.read_csv(DATA)
-    data["neg_log10_q"] = -data["q"].apply(lambda x: 0 if x == 0 else _log10(x))
+    data["neg_log10_q"] = [-math.log10(v) if v > 0 else 0 for v in data["q"].fillna(1)]
 
-    fig = dice_plot(
-        data=data,
-        cat_a="specimen",
-        cat_b="taxon",
-        cat_c="disease",
-        fill_col="lfc",
-        size_col="neg_log10_q",
+    fig, _ = dice_plot(
+        data,
+        x="specimen", y="taxon", pips="disease",
+        fill="lfc", size="neg_log10_q",
         title="Oral microbiome — Log2FC × -log10 q",
-        fill_legend_label="Log2FC",
-        size_legend_label="-log10(q)",
-        position_legend_label="disease",
-        color_map="ggdiceplot_pg",
+        fill_label="Log2FC",
+        size_label="-log10(q)",
+        pips_label="disease",
+        cmap="ggdiceplot_pg",
         pip_scale=0.9,
-        fig_width=10, fig_height=10,
+        figsize=(10, 10),
     )
-    fig.save(out_dir, "ggport_oral_microbiome", formats=".png")
-
-
-def _log10(v: float) -> float:
-    import math
-    return math.log10(v)
+    os.makedirs(out_dir, exist_ok=True)
+    fig.savefig(os.path.join(out_dir, "ggport_oral_microbiome.png"),
+                bbox_inches="tight", dpi=150)
+    plt.close(fig)
 
 
 if __name__ == "__main__":

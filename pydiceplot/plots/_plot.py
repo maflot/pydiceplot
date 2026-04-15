@@ -1,4 +1,15 @@
-"""Public dice/domino plot API — thin wrappers that dispatch to the active backend."""
+"""Public dice / domino plot API.
+
+`dice_plot` is a thin dispatch layer over the active backend — it forwards
+every argument to the backend's `plot_dice` and returns whatever that
+backend produces natively:
+
+- matplotlib: `(Figure, Axes)` when we create the figure, or just `Axes`
+  when the caller passes `ax=`
+- plotly: a `plotly.graph_objects.Figure`
+
+Select the backend with `pydiceplot.set_backend("matplotlib" | "plotly")`.
+"""
 
 from __future__ import annotations
 
@@ -6,100 +17,133 @@ import importlib
 from typing import Optional
 
 
-class _BackendPlot:
-    def __init__(self):
-        from pydiceplot._backend import _backend
-        module_name = f"pydiceplot.plots.backends._{_backend}_backend"
-        self._backend_module = importlib.import_module(module_name)
-        self.fig = None
-
-    def _prepare(self, fn_name: str, **kwargs):
-        fn = getattr(self._backend_module, fn_name)
-        self.fig = fn(**kwargs)
-
-    def show(self):
-        self._backend_module.show_plot(self.fig)
-
-    def save(self, plot_path, output_str, formats):
-        self._backend_module.save_plot(self.fig, plot_path, output_str, formats)
+def _active_backend():
+    from pydiceplot._backend import _backend
+    module_name = f"pydiceplot.plots.backends._{_backend}_backend"
+    return importlib.import_module(module_name)
 
 
 def dice_plot(
     data,
-    cat_a: str,
-    cat_b: str,
-    cat_c: str,
+    x: str,
+    y: str,
+    pips: str,
     *,
-    # Mode selection
-    cat_c_colors: Optional[dict] = None,
-    fill_col: Optional[str] = None,
+    # pip encoding
+    pip_colors: Optional[dict] = None,
+    fill: Optional[str] = None,
     fill_palette: Optional[dict] = None,
-    size_col: Optional[str] = None,
-    # Ordering
-    cat_a_order=None,
-    cat_b_order=None,
-    cat_c_order=None,
-    switch_axis: bool = False,
-    # Dice shape
-    ndots: Optional[int] = None,
+    size: Optional[str] = None,
+    # ordering
+    x_order=None,
+    y_order=None,
+    pips_order=None,
+    # dice geometry
+    npips: Optional[int] = None,
     pip_scale: float = 0.85,
-    cell_width: float = 0.85,
-    cell_height: float = 0.85,
+    tile_width: float = 0.85,
+    tile_height: float = 0.85,
     grid_lines: bool = False,
-    # Color scales
+    # color scales
     fill_range=None,
     size_range=None,
-    color_map: str = "viridis",
-    # Labels
+    cmap: str = "viridis",
+    # labels
     title: Optional[str] = None,
-    cat_a_labs: Optional[str] = None,
-    cat_b_labs: Optional[str] = None,
-    cat_c_labs: Optional[str] = None,
-    fill_legend_label: Optional[str] = None,
-    size_legend_label: Optional[str] = None,
-    position_legend_label: Optional[str] = None,
-    # Dimensions
-    fig_width: Optional[float] = None,
-    fig_height: Optional[float] = None,
-    max_dice_sides: int = 9,
-    # Legacy (unused, accepted for back-compat)
-    group=None,
-    group_colors=None,
-    group_alpha: float = 0.6,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    fill_label: Optional[str] = None,
+    size_label: Optional[str] = None,
+    pips_label: Optional[str] = None,
+    # plot target — backend-specific
+    ax=None,                          # matplotlib only
+    fig=None,                         # plotly only
+    figsize=None,                     # matplotlib only — (width_in, height_in)
+    width: Optional[int] = None,      # plotly only — pixels
+    height: Optional[int] = None,     # plotly only — pixels
+    max_pips: int = 9,
 ):
-    """Create a dice plot using the active backend.
+    """Draw a dice plot.
 
-    Three modes, chosen by the inputs you pass:
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        Long-format input. One row per present pip.
+    x, y : str
+        Column names that map to the x- and y-axis categories.
+    pips : str
+        Column name selecting which pip slot (1..npips) this row occupies.
+    pip_colors : dict, optional
+        `{pips value: hex}` — when set, each pip is coloured by its `pips`
+        value. Key order sets the pip slot order.
+    fill : str, optional
+        Column name for per-pip fill. Continuous unless paired with
+        `fill_palette`.
+    fill_palette : dict, optional
+        `{fill value: hex}` — enables discrete per-pip fill. The pip slot
+        still comes from `pips`; only the colour comes from `fill`.
+    size : str, optional
+        Numeric column name for per-pip size.
+    x_order, y_order, pips_order : sequence, optional
+        Explicit category orderings. Default: sorted unique.
+    npips : int, optional
+        Force a specific pip count (1..9). Default: `len(unique(pips))`.
+    pip_scale : float
+        Fraction of the sub-cell the pip radius can fill. Default 0.85.
+    tile_width, tile_height : float
+        Tile size as a fraction of the cell. Default 0.85.
+    grid_lines : bool
+        Draw a faint 3×3 sub-grid inside each tile.
+    fill_range, size_range : tuple, optional
+        `(vmin, vmax)` for continuous mappings. Default: data extents.
+    cmap : str
+        Matplotlib colormap name for continuous fill. Default "viridis".
+    title, xlabel, ylabel : str, optional
+        Plot labels.
+    fill_label, size_label, pips_label : str, optional
+        Legend section titles. Default: the corresponding column name.
+    ax : matplotlib.axes.Axes, optional
+        Existing axes to draw into. Skips the right-side legend stack
+        (caller is composing a multi-panel figure). Matplotlib only.
+    fig : plotly.graph_objects.Figure, optional
+        Existing figure to add shapes/traces to. Skips the legend stack.
+        Plotly only.
+    figsize : tuple, optional
+        `(width_in, height_in)` for matplotlib. Ignored on plotly.
+    width, height : int, optional
+        Pixel dimensions for plotly. Ignored on matplotlib.
 
-    - **Categorical** (default): supply `cat_c_colors={label: hex, ...}`. Each
-      pip slot shows a filled circle in its category colour when present.
-    - **Per-dot continuous**: pass `fill_col` and/or `size_col` (column names
-      in `data`). Each pip encodes continuous fill and/or size, with a matching
-      colorbar/size legend.
-    - **Tile mode**: not auto-detected in the long-format API; use `fill_col`
-      on a single-row-per-tile DataFrame.
-
-    The legend stack (right-hand column) always includes a position legend
-    showing which pip slot corresponds to which cat_c label, matching
-    ggdiceplot's `draw_key` behavior.
+    Returns
+    -------
+    matplotlib: `(Figure, Axes)` or `Axes` (when `ax=` was supplied).
+    plotly: `plotly.graph_objects.Figure`.
     """
-    plot = _BackendPlot()
-    plot._prepare(
-        "plot_dice",
-        data=data, cat_a=cat_a, cat_b=cat_b, cat_c=cat_c,
-        cat_c_colors=cat_c_colors, fill_col=fill_col, fill_palette=fill_palette,
-        size_col=size_col,
-        cat_a_order=cat_a_order, cat_b_order=cat_b_order, cat_c_order=cat_c_order,
-        switch_axis=switch_axis, ndots=ndots, pip_scale=pip_scale,
-        cell_width=cell_width, cell_height=cell_height, grid_lines=grid_lines,
-        fill_range=fill_range, size_range=size_range, color_map=color_map,
-        title=title, cat_a_labs=cat_a_labs, cat_b_labs=cat_b_labs, cat_c_labs=cat_c_labs,
-        fill_legend_label=fill_legend_label, size_legend_label=size_legend_label,
-        position_legend_label=position_legend_label,
-        fig_width=fig_width, fig_height=fig_height, max_dice_sides=max_dice_sides,
-        group=group, group_colors=group_colors, group_alpha=group_alpha,
+    backend = _active_backend()
+    kwargs = dict(
+        pip_colors=pip_colors, fill=fill, fill_palette=fill_palette, size=size,
+        x_order=x_order, y_order=y_order, pips_order=pips_order,
+        npips=npips, pip_scale=pip_scale,
+        tile_width=tile_width, tile_height=tile_height, grid_lines=grid_lines,
+        fill_range=fill_range, size_range=size_range, cmap=cmap,
+        title=title, xlabel=xlabel, ylabel=ylabel,
+        fill_label=fill_label, size_label=size_label, pips_label=pips_label,
+        max_pips=max_pips,
     )
-    return plot
+    # Backend-specific plot targets
+    if backend.__name__.endswith("_matplotlib_backend"):
+        if fig is not None:
+            raise TypeError("dice_plot: `fig=` is a plotly-only argument")
+        if width is not None or height is not None:
+            raise TypeError("dice_plot: `width`/`height` are plotly-only; use `figsize=`")
+        kwargs.update(ax=ax, figsize=figsize)
+    else:  # plotly
+        if ax is not None:
+            raise TypeError("dice_plot: `ax=` is a matplotlib-only argument")
+        if figsize is not None:
+            raise TypeError("dice_plot: `figsize=` is matplotlib-only; use `width`/`height`")
+        kwargs.update(fig=fig, width=width, height=height)
+
+    return backend.plot_dice(data, x, y, pips, **kwargs)
 
 
 def domino_plot(
@@ -129,12 +173,11 @@ def domino_plot(
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
 ):
-    """Create a domino plot (per-row fold-change × p-value, paired contrasts)."""
+    """Legacy domino plot (untouched by the dice_plot rewrite)."""
     if logfc_colors is None:
         logfc_colors = {"low": "blue", "mid": "white", "high": "red"}
-    plot = _BackendPlot()
-    plot._prepare(
-        "plot_domino",
+    backend = _active_backend()
+    return backend.plot_domino(
         data=data, gene_list=gene_list, switch_axis=switch_axis,
         min_dot_size=min_dot_size, max_dot_size=max_dot_size, spacing_factor=spacing_factor,
         var_id=var_id, feature_col=feature_col, celltype_col=celltype_col,
@@ -145,4 +188,3 @@ def domino_plot(
         base_width=base_width, base_height=base_height,
         title=title, xlabel=xlabel, ylabel=ylabel,
     )
-    return plot

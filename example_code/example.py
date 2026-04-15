@@ -2,8 +2,7 @@
 
 The first block is the quick categorical + per-dot tour used in the readme's
 "Quick start" section. The `ggport_*` block runs 1-to-1 ports of the plots
-in `ggdiceplot/demo_output/` plus a creative n=9 example that exercises the
-fully-populated 3×3 die face.
+in `ggdiceplot/demo_output/` plus a creative n=9 example.
 
 Run with:
 
@@ -12,6 +11,7 @@ Run with:
 
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 import pydiceplot
@@ -32,21 +32,25 @@ from . import (
 IMAGES_DIR = "images"
 
 
+def _save(fig, name: str):
+    os.makedirs(IMAGES_DIR, exist_ok=True)
+    fig.savefig(os.path.join(IMAGES_DIR, f"{name}.png"),
+                bbox_inches="tight", dpi=150)
+    plt.close(fig)
+
+
 def example_n_categorical(n: int, filename: str):
-    cat_c_colors = get_example_cat_c_colors()
+    palette = get_example_cat_c_colors()
     data = get_diceplot_example_data(n)
     present = list(data["PathologyVariable"].unique())
-    fig = dice_plot(
-        data=data,
-        cat_a="CellType",
-        cat_b="Pathway",
-        cat_c="PathologyVariable",
-        cat_c_colors={v: cat_c_colors[v] for v in present},
+    fig, _ = dice_plot(
+        data,
+        x="CellType", y="Pathway", pips="PathologyVariable",
+        pip_colors={v: palette[v] for v in present},
         title=f"Dice Plot with {n} Pathology Variables",
-        fig_width=9,
-        fig_height=10,
+        figsize=(9, 10),
     )
-    fig.save(IMAGES_DIR, filename, formats=".png")
+    _save(fig, filename)
 
 
 def example_per_dot_continuous(filename: str):
@@ -54,21 +58,16 @@ def example_per_dot_continuous(filename: str):
     data = get_diceplot_example_data(4)
     data["lfc"] = rng.normal(0, 1.2, len(data))
     data["nlq"] = rng.uniform(0.5, 4.0, len(data))
-    fig = dice_plot(
-        data=data,
-        cat_a="CellType",
-        cat_b="Pathway",
-        cat_c="PathologyVariable",
-        fill_col="lfc",
-        size_col="nlq",
-        fill_legend_label="Log2FC",
-        size_legend_label="-log10(q)",
-        color_map="RdBu_r",
-        title="Per-dot continuous (Log2FC x -log10 q)",
-        fig_width=10,
-        fig_height=10,
+    fig, _ = dice_plot(
+        data,
+        x="CellType", y="Pathway", pips="PathologyVariable",
+        fill="lfc", size="nlq",
+        fill_label="Log2FC", size_label="-log10(q)",
+        cmap="RdBu_r",
+        title="Per-dot continuous (Log2FC × -log10 q)",
+        figsize=(10, 10),
     )
-    fig.save(IMAGES_DIR, filename, formats=".png")
+    _save(fig, filename)
 
 
 if __name__ == "__main__":

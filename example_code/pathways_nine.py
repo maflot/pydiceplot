@@ -10,17 +10,14 @@ most-studied developmental/oncogenic signaling pathways:
 Pip colour encodes log2-fold-change relative to vehicle (diverging
 purple→green, matching the ggdiceplot palette), and pip size encodes
 pathway-activity significance (-log10 q). This is a fully-populated 3×3
-die face so every pip slot is drawn — the layout `pydiceplot` only supports
-once ndots is bumped above 6.
+die face — every pip slot is drawn.
 
-Data is synthetic but built from plausible pathway-level cross-talk: e.g.
-TGF-β upregulation in fibroblasts under TGF-β1 stimulus, NF-κB / MAPK
-activation in macrophages under LPS, and canonical Wnt activity in
-intestinal stem cells under WNT3A.
+Data is synthetic but built from plausible pathway-level cross-talk.
 """
 
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -47,20 +44,17 @@ TREATMENTS = ["Vehicle", "TGF-β1", "LPS", "WNT3A", "Hypoxia", "IFN-γ"]
 
 def _synthesize() -> pd.DataFrame:
     rng = np.random.default_rng(42)
-    # Weak background perturbation for every (pathway, cell, treatment) triple
     rows = []
     for ct in CELL_TYPES:
         for tx in TREATMENTS:
             for pw in PATHWAYS:
-                lfc = rng.normal(0.0, 0.45)
-                q = rng.uniform(0.01, 0.9)
-                rows.append(
-                    {"cell_type": ct, "treatment": tx, "pathway": pw,
-                     "lfc": lfc, "q": q}
-                )
+                rows.append({
+                    "cell_type": ct, "treatment": tx, "pathway": pw,
+                    "lfc": rng.normal(0.0, 0.45),
+                    "q":   rng.uniform(0.01, 0.9),
+                })
     df = pd.DataFrame(rows)
 
-    # Inject biologically plausible strong hits on top of the background
     def boost(mask, pathway, lfc_mean, q_mean):
         pw_mask = mask & (df["pathway"] == pathway)
         df.loc[pw_mask, "lfc"] = rng.normal(lfc_mean, 0.3, pw_mask.sum())
@@ -104,26 +98,26 @@ def run(out_dir: str = "images") -> None:
 
     df = _synthesize()
 
-    fig = dice_plot(
-        data=df,
-        cat_a="treatment",
-        cat_b="cell_type",
-        cat_c="pathway",
-        fill_col="lfc",
-        size_col="neg_log10_q",
-        cat_a_order=TREATMENTS,
-        cat_b_order=CELL_TYPES,
-        cat_c_order=PATHWAYS,
+    fig, _ = dice_plot(
+        df,
+        x="treatment", y="cell_type", pips="pathway",
+        fill="lfc", size="neg_log10_q",
+        x_order=TREATMENTS,
+        y_order=CELL_TYPES,
+        pips_order=PATHWAYS,
         title="Pathway activity — 9 canonical signaling modules",
-        fill_legend_label="Log2FC",
-        size_legend_label="-log10(q)",
-        position_legend_label="pathway",
-        color_map="ggdiceplot_pg",
+        fill_label="Log2FC",
+        size_label="-log10(q)",
+        pips_label="pathway",
+        cmap="ggdiceplot_pg",
         pip_scale=0.95,
-        cell_width=0.92, cell_height=0.92,
-        fig_width=13, fig_height=10,
+        tile_width=0.92, tile_height=0.92,
+        figsize=(13, 10),
     )
-    fig.save(out_dir, "ggport_pathways_nine", formats=".png")
+    os.makedirs(out_dir, exist_ok=True)
+    fig.savefig(os.path.join(out_dir, "ggport_pathways_nine.png"),
+                bbox_inches="tight", dpi=150)
+    plt.close(fig)
 
 
 if __name__ == "__main__":

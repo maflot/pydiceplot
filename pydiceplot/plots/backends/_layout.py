@@ -42,14 +42,14 @@ DICE_POSITIONS: dict[int, List[int]] = {
 # die faces for every n in 1..9.
 
 
-def dot_grid_positions(ndots: int) -> List[Tuple[int, int]]:
+def pip_grid_positions(npips: int) -> List[Tuple[int, int]]:
     """Return `(grid_row, grid_col)` for each pip, with row 0 = top, col 0 = left."""
-    positions = DICE_POSITIONS.get(ndots, [])
+    positions = DICE_POSITIONS.get(npips, [])
     return [((p - 1) // 3, (p - 1) % 3) for p in positions]
 
 
-def dot_offsets(
-    ndots: int,
+def pip_offsets(
+    npips: int,
     cell_width: float = 0.8,
     cell_height: float = 0.8,
     pad: float = 0.1,
@@ -63,7 +63,7 @@ def dot_offsets(
     avail_w = cell_width - 2.0 * pad
     avail_h = cell_height - 2.0 * pad
     out: List[Tuple[float, float]] = []
-    for (row, col) in dot_grid_positions(ndots):
+    for (row, col) in pip_grid_positions(npips):
         dx = col / 2.0 * avail_w + pad - cell_width / 2.0
         dy = row / 2.0 * avail_h + pad - cell_height / 2.0
         out.append((dx, dy))
@@ -90,7 +90,7 @@ class DiceLayout:
     grid_h: float           # total grid height (n_y * cell_sq)
     base_pip_r: float       # max pip radius (sub/2 * pip_scale)
     pip_scale: float
-    ndots: int
+    npips: int
     cell_width: float
     cell_height: float
 
@@ -106,7 +106,7 @@ class DiceLayout:
         with an inverted y-axis). `y_down=False` mirrors for y-up coord systems.
         """
         out: List[Tuple[float, float]] = []
-        for (row, col) in dot_grid_positions(self.ndots):
+        for (row, col) in pip_grid_positions(self.npips):
             dx = (col - 1) * self.sub
             dy = (row - 1) * self.sub
             if not y_down:
@@ -125,7 +125,7 @@ def compute_dice_layout(
     cell_width: float = 0.8,
     cell_height: float = 0.8,
     pip_scale: float = 0.85,
-    ndots: int = 1,
+    npips: int = 1,
 ) -> DiceLayout:
     """Compute a centred square-cell dice layout, mirroring kuva::add_diceplot.
 
@@ -134,8 +134,8 @@ def compute_dice_layout(
     """
     if n_x <= 0 or n_y <= 0:
         raise ValueError(f"n_x and n_y must be positive, got ({n_x}, {n_y})")
-    if ndots < 1 or ndots > 9:
-        raise ValueError(f"ndots must be in 1..9, got {ndots}")
+    if npips < 1 or npips > 9:
+        raise ValueError(f"npips must be in 1..9, got {npips}")
 
     cw = plot_width / n_x
     ch = plot_height / n_y
@@ -162,7 +162,7 @@ def compute_dice_layout(
         grid_h=grid_h,
         base_pip_r=base_pip_r,
         pip_scale=pip_scale,
-        ndots=ndots,
+        npips=npips,
         cell_width=cell_width,
         cell_height=cell_height,
     )

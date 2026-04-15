@@ -2,15 +2,15 @@
 Preprocessing for dice plots.
 
 Produces a backend-agnostic `DicePlotData` record that the matplotlib and
-plotly backends both consume. Supports three mutually-exclusive input modes
-(matching kuva's `DicePlot::with_records`, `with_dot_data`, `with_points`):
+plotly backends both consume. Supports three input modes:
 
-- **Categorical**: `cat_c_colors` supplied → each pip is either present with
-  a fixed color or absent. One row per (x, y, cat_c) in `data`.
-- **Per-dot continuous**: `fill_col` and/or `size_col` given → each pip
-  encodes continuous fill and/or size. One row per (x, y, cat_c).
-- **Tile-level** (less common): a single continuous value per (x, y) tile
-  with no per-pip encoding. Not auto-detected; request via `tile_fill_col`.
+- **Categorical**: `pip_colors={label: hex, ...}` supplied → each pip is
+  either present (filled in its category colour) or absent.
+- **Per-dot continuous**: `fill` / `size` are numeric column names →
+  each pip encodes continuous fill and/or size.
+- **Per-dot discrete fill**: `fill` + `fill_palette={value: hex, ...}` →
+  pip slot is selected by `pips`, pip colour comes from a separate
+  categorical column via the palette.
 """
 
 from __future__ import annotations
@@ -28,10 +28,10 @@ import pandas as pd
 class DicePoint:
     x_cat: str
     y_cat: str
-    dot_colors: List[Optional[str]] = field(default_factory=list)   # categorical
-    dot_fills:  List[Optional[float]] = field(default_factory=list) # per-pip continuous
-    dot_sizes:  List[Optional[float]] = field(default_factory=list) # per-pip continuous
-    tile_fill:  Optional[float] = None                              # tile-level
+    pip_colors: List[Optional[str]] = field(default_factory=list)
+    pip_fills:  List[Optional[float]] = field(default_factory=list)
+    pip_sizes:  List[Optional[float]] = field(default_factory=list)
+    tile_fill:  Optional[float] = None
 
 
 @dataclass
@@ -39,10 +39,10 @@ class DicePlotData:
     points: List[DicePoint]
     x_categories: List[str]
     y_categories: List[str]
-    category_labels: List[str]   # cat_c labels (pip slot labels)
-    cat_c_colors: Optional[dict] = None
-    ndots: int = 0
-    mode: str = "categorical"    # "categorical" | "per_dot" | "tile"
+    pip_labels: List[str]          # one label per pip slot, in slot order
+    pip_colors: Optional[dict] = None  # legend palette (discrete)
+    npips: int = 0
+    mode: str = "categorical"          # "categorical" | "per_dot"
     fill_extent: Optional[tuple] = None
     size_extent: Optional[tuple] = None
 
@@ -61,152 +61,152 @@ def _sorted_unique(series: pd.Series) -> List[str]:
 
 def preprocess_dice_plot(
     data: pd.DataFrame,
-    cat_a: str,
-    cat_b: str,
-    cat_c: str,
-    cat_c_colors: Optional[dict] = None,
-    fill_col: Optional[str] = None,
+    x: str,
+    y: str,
+    pips: str,
+    *,
+    pip_colors: Optional[dict] = None,
+    fill: Optional[str] = None,
     fill_palette: Optional[dict] = None,
-    size_col: Optional[str] = None,
-    cat_a_order: Optional[Sequence[str]] = None,
-    cat_b_order: Optional[Sequence[str]] = None,
-    cat_c_order: Optional[Sequence[str]] = None,
-    max_dice_sides: int = 9,
+    size: Optional[str] = None,
+    x_order: Optional[Sequence[str]] = None,
+    y_order: Optional[Sequence[str]] = None,
+    pips_order: Optional[Sequence[str]] = None,
+    max_pips: int = 9,
 ) -> DicePlotData:
     """Turn long-format `data` into a `DicePlotData` ready for rendering.
 
     Parameters
     ----------
-    data : DataFrame with columns `cat_a`, `cat_b`, `cat_c` (+ optional
-        `fill_col`, `size_col`). One row per present pip slot.
-    cat_c_colors : dict mapping cat_c label → hex color. If provided, the
-        plot is categorical with pips coloured by `cat_c`. Key order sets
-        pip slot order.
-    fill_palette : dict mapping `fill_col` value → hex color. If provided,
-        the plot is categorical with pips coloured by `fill_col` instead of
-        `cat_c`. Use together with `cat_c_order` (or a factor on `cat_c`)
-        to set the pip slot order.
-    fill_col, size_col : column names for continuous per-pip encoding.
-        Supplying `fill_col` with `fill_palette` is discrete; supplying
-        either without a palette is continuous.
+    data : DataFrame
+        One row per present pip.
+    x, y, pips : column names.
+        `x` maps to the plot x-axis category, `y` to the y-axis category,
+        `pips` to the pip slot category (1..npips).
+    pip_colors : dict {pips value → hex}, optional.
+        When set, each pip is coloured by its `pips` value. Key order sets
+        the pip slot order.
+    fill : str, optional.
+        Column name for per-pip fill. Continuous if numeric, discrete if
+        paired with `fill_palette`.
+    fill_palette : dict {fill value → hex}, optional.
+        Discrete colour per `fill` value. Use together with `pips_order` (or a
+        factor on `pips`) to control pip slot order.
+    size : str, optional.
+        Numeric column name for per-pip size.
     """
-    missing = [c for c in (cat_a, cat_b, cat_c) if c not in data.columns]
+    missing = [c for c in (x, y, pips) if c not in data.columns]
     if missing:
         raise KeyError(f"dice_plot: columns missing from data: {missing}")
 
-    if fill_col is not None and fill_col not in data.columns:
-        raise KeyError(f"dice_plot: fill_col '{fill_col}' not in data")
-    if size_col is not None and size_col not in data.columns:
-        raise KeyError(f"dice_plot: size_col '{size_col}' not in data")
+    if fill is not None and fill not in data.columns:
+        raise KeyError(f"dice_plot: fill '{fill}' not in data")
+    if size is not None and size not in data.columns:
+        raise KeyError(f"dice_plot: size '{size}' not in data")
 
-    if cat_c_colors is not None and fill_palette is not None:
+    if pip_colors is not None and fill_palette is not None:
         raise ValueError(
-            "dice_plot: pass either `cat_c_colors` or `fill_palette`, not both"
+            "dice_plot: pass either `pip_colors` or `fill_palette`, not both"
         )
 
     discrete_fill = fill_palette is not None
-    continuous_per_dot = not discrete_fill and (fill_col is not None or size_col is not None)
+    continuous_per_dot = not discrete_fill and (fill is not None or size is not None)
     mode = "per_dot" if continuous_per_dot else "categorical"
 
-    # ── Determine category orders ──────────────────────────────────────────
-    if cat_a_order is None:
-        cat_a_order = _sorted_unique(data[cat_a])
-    if cat_b_order is None:
-        cat_b_order = _sorted_unique(data[cat_b])
+    # ── Category orders ────────────────────────────────────────────────────
+    if x_order is None:
+        x_order = _sorted_unique(data[x])
+    if y_order is None:
+        y_order = _sorted_unique(data[y])
 
-    if cat_c_colors is not None:
-        category_labels = list(cat_c_colors.keys())
-    elif cat_c_order is not None:
-        category_labels = list(cat_c_order)
+    if pip_colors is not None:
+        pip_labels = list(pip_colors.keys())
+    elif pips_order is not None:
+        pip_labels = list(pips_order)
     else:
-        category_labels = _sorted_unique(data[cat_c])
+        pip_labels = _sorted_unique(data[pips])
 
-    ndots = len(category_labels)
-    if ndots < 1 or ndots > max_dice_sides:
+    npips = len(pip_labels)
+    if npips < 1 or npips > max_pips:
         raise ValueError(
-            f"dice_plot: number of cat_c categories ({ndots}) must be in "
-            f"1..{max_dice_sides}"
+            f"dice_plot: number of `pips` categories ({npips}) must be in "
+            f"1..{max_pips}"
         )
 
-    # Auto-generate categorical colors when not supplied (and no palette)
-    if mode == "categorical" and cat_c_colors is None and fill_palette is None:
-        cat_c_colors = dict(zip(category_labels, generate_automatic_colors(ndots)))
+    if mode == "categorical" and pip_colors is None and fill_palette is None:
+        pip_colors = dict(zip(pip_labels, generate_automatic_colors(npips)))
 
-    # ── Build per-tile DicePoint records ───────────────────────────────────
-    slot_index = {label: i for i, label in enumerate(category_labels)}
+    # ── Build per-tile points ──────────────────────────────────────────────
+    slot_index = {label: i for i, label in enumerate(pip_labels)}
 
-    valid = data[cat_c].isin(category_labels)
+    valid = data[pips].isin(pip_labels)
     if not valid.all():
-        dropped = data.loc[~valid, cat_c].unique().tolist()
+        dropped = data.loc[~valid, pips].unique().tolist()
         import warnings
         warnings.warn(
-            f"dice_plot: dropping rows with cat_c values not in category_labels: {dropped}"
+            f"dice_plot: dropping rows with `pips` values not in pip_labels: {dropped}"
         )
         data = data.loc[valid]
 
     points_map: dict[tuple, DicePoint] = {}
     for _, row in data.iterrows():
-        key = (row[cat_a], row[cat_b])
+        key = (row[x], row[y])
         pt = points_map.get(key)
         if pt is None:
             pt = DicePoint(
-                x_cat=row[cat_a],
-                y_cat=row[cat_b],
-                dot_colors=[None] * ndots,
-                dot_fills=[None] * ndots,
-                dot_sizes=[None] * ndots,
+                x_cat=row[x],
+                y_cat=row[y],
+                pip_colors=[None] * npips,
+                pip_fills=[None] * npips,
+                pip_sizes=[None] * npips,
             )
             points_map[key] = pt
-        slot = slot_index[row[cat_c]]
+        slot = slot_index[row[pips]]
         if mode == "categorical":
             if discrete_fill:
-                fv = row[fill_col]
+                fv = row[fill]
                 if pd.notna(fv):
-                    pt.dot_colors[slot] = fill_palette.get(fv)
+                    pt.pip_colors[slot] = fill_palette.get(fv)
             else:
-                pt.dot_colors[slot] = cat_c_colors[row[cat_c]]
+                pt.pip_colors[slot] = pip_colors[row[pips]]
         else:
-            if fill_col is not None:
-                v = row[fill_col]
-                pt.dot_fills[slot] = float(v) if pd.notna(v) else None
-            if size_col is not None:
-                v = row[size_col]
-                pt.dot_sizes[slot] = float(v) if pd.notna(v) else None
+            if fill is not None:
+                v = row[fill]
+                pt.pip_fills[slot] = float(v) if pd.notna(v) else None
+            if size is not None:
+                v = row[size]
+                pt.pip_sizes[slot] = float(v) if pd.notna(v) else None
 
     points = list(points_map.values())
 
-    # ── Compute extents for continuous encodings ──────────────────────────
     fill_extent = None
     size_extent = None
     if mode == "per_dot":
-        all_fills = [v for p in points for v in p.dot_fills if v is not None]
-        all_sizes = [v for p in points for v in p.dot_sizes if v is not None]
+        all_fills = [v for p in points for v in p.pip_fills if v is not None]
+        all_sizes = [v for p in points for v in p.pip_sizes if v is not None]
         if all_fills:
             fill_extent = (float(min(all_fills)), float(max(all_fills)))
         if all_sizes:
             size_extent = (float(min(all_sizes)), float(max(all_sizes)))
 
-    # If a discrete fill palette was used, expose it via cat_c_colors so the
-    # dot-color legend section can render entries for the actual fill values.
-    legend_colors = cat_c_colors if cat_c_colors is not None else fill_palette
+    legend_colors = pip_colors if pip_colors is not None else fill_palette
 
     return DicePlotData(
         points=points,
-        x_categories=list(cat_a_order),
-        y_categories=list(cat_b_order),
-        category_labels=category_labels,
-        cat_c_colors=legend_colors,
-        ndots=ndots,
+        x_categories=list(x_order),
+        y_categories=list(y_order),
+        pip_labels=pip_labels,
+        pip_colors=legend_colors,
+        npips=npips,
         mode=mode,
         fill_extent=fill_extent,
         size_extent=size_extent,
     )
 
 
-# ── Sample data helpers (preserved from old module) ────────────────────────
+# ── Sample data helpers ────────────────────────────────────────────────────
 
 def generate_automatic_colors(n_colors: int) -> List[str]:
-    """Generate `n_colors` distinct hex colors."""
     prop_cycle = plt.rcParams["axes.prop_cycle"]
     colors = list(prop_cycle.by_key()["color"])
     if n_colors > len(colors):
@@ -244,10 +244,6 @@ def get_diceplot_example_data(n: int) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def get_example_group_colors() -> dict:
-    return {"Group1": "#1f77b4", "Group2": "#ff7f0e", "Group3": "#2ca02c"}
-
-
 def get_example_cat_c_colors() -> dict:
     return {
         "Alzheimer's disease": "#1f77b4",
@@ -260,3 +256,7 @@ def get_example_cat_c_colors() -> dict:
         "Obesity": "#17becf",
         "Hypertension": "#bcbd22",
     }
+
+
+def get_example_group_colors() -> dict:
+    return {"Group1": "#1f77b4", "Group2": "#ff7f0e", "Group3": "#2ca02c"}
