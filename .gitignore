@@ -9,12 +9,14 @@ __pycache__/
 *.mp4
 *.h5
 *.yml
+!.github/workflows/*.yml
 
 *.pth
 *.pt
 *.html
 
 *.png
+!images/domino_example.png
 
 resources/
 cmake-build-debug/
@@ -43,4 +45,6 @@ cmake-build-debug/
 *.pag
 *.brf
 /build/
+/dist/
 /pyDicePlot.egg-info/
+/pydiceplot.egg-info/

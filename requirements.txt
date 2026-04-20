@@ -1,7 +1,6 @@
-pandas
-numpy
-plotly
-warnings-plugin
-scipy
-kaleido
-matplotlib
+pandas>=1.5
+numpy>=1.23
+plotly>=5.15
+scipy>=1.10
+kaleido>=0.2
+matplotlib>=3.7

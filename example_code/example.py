@@ -1,45 +1,94 @@
-from pydiceplot import dice_plot
-from pydiceplot.plots.backends._dice_utils import (get_diceplot_example_data,
-                                                   get_example_group_colors,
-                                                   get_example_cat_c_colors)
-import pydiceplot
+"""Regenerate all showcase images under `./images/`.
 
-# Set the backend for pydiceplot
-pydiceplot.set_backend("matplotlib")
-pydiceplot.set_backend("plotly")
+The first block is the quick categorical + per-dot tour used in the readme's
+"Quick start" section. The `ggport_*` block runs 1-to-1 ports of the plots
+in `ggdiceplot/demo_output/` plus a creative n=9 example.
+
+Run with:
+
+    pixi run example
+"""
+
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+
+import pydiceplot
+from pydiceplot import dice_plot
+from pydiceplot.plots.backends._dice_utils import (
+    get_diceplot_example_data,
+    get_example_cat_c_colors,
+)
+
+from . import (
+    example_domino,
+    oral_microbiome,
+    oral_microbiome_fill_only,
+    mirna_direction,
+    zebra_domino,
+    pathways_nine,
+)
+
+IMAGES_DIR = "images"
+
+
+def _save(fig, name: str):
+    os.makedirs(IMAGES_DIR, exist_ok=True)
+    fig.savefig(os.path.join(IMAGES_DIR, f"{name}.png"),
+                bbox_inches="tight", dpi=150)
+    plt.close(fig)
+
+
+def example_n_categorical(n: int, filename: str):
+    palette = get_example_cat_c_colors()
+    data = get_diceplot_example_data(n)
+    present = list(data["PathologyVariable"].unique())
+    fig, _ = dice_plot(
+        data,
+        x="CellType", y="Pathway", pips="PathologyVariable",
+        pip_colors={v: palette[v] for v in present},
+        title=f"Dice Plot with {n} Pathology Variables",
+        figsize=(9, 10),
+    )
+    _save(fig, filename)
+
+
+def example_per_dot_continuous(filename: str):
+    rng = np.random.default_rng(1)
+    data = get_diceplot_example_data(4)
+    data["lfc"] = rng.normal(0, 1.2, len(data))
+    data["nlq"] = rng.uniform(0.5, 4.0, len(data))
+    fig, _ = dice_plot(
+        data,
+        x="CellType", y="Pathway", pips="PathologyVariable",
+        fill="lfc", size="nlq",
+        fill_label="Log2FC", size_label="-log10(q)",
+        cmap="RdBu_r",
+        title="Per-dot continuous (Log2FC × -log10 q)",
+        figsize=(10, 10),
+    )
+    _save(fig, filename)
+
 
 if __name__ == "__main__":
-    plot_path = "./plots"
+    os.makedirs(IMAGES_DIR, exist_ok=True)
+    pydiceplot.set_backend("matplotlib")
 
-    # define colors for the example plot
+    # Quick-start showcase
+    example_n_categorical(4, "dice_4_categorical")
+    example_n_categorical(6, "dice_6_categorical")
+    example_n_categorical(9, "dice_9_categorical")
+    example_per_dot_continuous("dice_per_dot_continuous")
 
+    # ggdiceplot demo ports
+    oral_microbiome.run(IMAGES_DIR)
+    oral_microbiome_fill_only.run(IMAGES_DIR)
+    mirna_direction.run(IMAGES_DIR)
+    example_domino.run(IMAGES_DIR)
+    zebra_domino.run(IMAGES_DIR)
 
-    # Generate and save dice plots for different numbers of pathology variables
-    for n in [2,3, 4, 5, 6]:
-        # Get the data using the utility function
-        # load example data
-        data_expanded = get_diceplot_example_data(n)
-        group_colors = get_example_group_colors()
-        cat_c_colors = get_example_cat_c_colors()
-        # Define pathology variables and their colors
-        # extract pathology variables and select proper color scale
-        pathology_vars = data_expanded["PathologyVariable"].unique()
-        current_cat_c_colors = {var: cat_c_colors[var] for var in pathology_vars}
+    # Creative n=9 example
+    pathways_nine.run(IMAGES_DIR)
 
-        # Create the dice plot
-        title = f"Dice Plot with {n} Pathology Variables"
-        fig = dice_plot(
-            data=data_expanded,
-            cat_a="CellType",
-            cat_b="Pathway",
-            cat_c="PathologyVariable",
-            group="Group", # default is set to None, it will color the boxes plain white
-            switch_axis=False,
-            title=title,
-            cat_c_colors=current_cat_c_colors,
-            group_colors=group_colors,  # Include group colors
-            max_dice_sides=6  # Adjust if needed
-        )
-
-        # Display and save the figure
-        fig.show()
+    print(f"Wrote showcase images to {IMAGES_DIR}/")
