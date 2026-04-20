@@ -16,6 +16,7 @@ python-kaleido = "*"
 pytest = "*"
 python-build = "*"
 twine = "*"
+pre-commit = "*"
 
 [pypi-dependencies]
 pydiceplot = { path = ".", editable = true }
@@ -25,3 +26,4 @@ test = "pytest tests -v"
 example = "python -m example_code.example"
 build = { cmd = "rm -rf dist build *.egg-info && python -m build", description = "Build sdist + wheel" }
 check = { cmd = "python -m twine check dist/*", description = "Validate built artifacts" }
+precommit = { cmd = "pre-commit run --all-files", description = "Run pre-commit hooks across the repo" }

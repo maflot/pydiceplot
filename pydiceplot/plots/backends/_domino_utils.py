@@ -99,8 +99,9 @@ def _coerce_numeric(series: pd.Series, column: str) -> pd.Series:
     return numeric
 
 
-def _normalize_size(value: float | None, vmin: float, vmax: float,
-                    low: float, high: float) -> float:
+def _normalize_size(
+    value: float | None, vmin: float, vmax: float, low: float, high: float
+) -> float:
     if value is None:
         return low
     if vmax <= vmin:
@@ -109,16 +110,24 @@ def _normalize_size(value: float | None, vmin: float, vmax: float,
     return low + (high - low) * norm
 
 
-def scaled_domino_marker_area(value: float | None, vmin: float, vmax: float,
-                              min_area: float = MPL_MARKER_AREA_RANGE[0],
-                              max_area: float = MPL_MARKER_AREA_RANGE[1]) -> float:
+def scaled_domino_marker_area(
+    value: float | None,
+    vmin: float,
+    vmax: float,
+    min_area: float = MPL_MARKER_AREA_RANGE[0],
+    max_area: float = MPL_MARKER_AREA_RANGE[1],
+) -> float:
     """Map a size value to a matplotlib scatter area."""
     return _normalize_size(value, vmin, vmax, min_area, max_area)
 
 
-def scaled_domino_marker_size(value: float | None, vmin: float, vmax: float,
-                              min_size: float = PLOTLY_MARKER_SIZE_RANGE[0],
-                              max_size: float = PLOTLY_MARKER_SIZE_RANGE[1]) -> float:
+def scaled_domino_marker_size(
+    value: float | None,
+    vmin: float,
+    vmax: float,
+    min_size: float = PLOTLY_MARKER_SIZE_RANGE[0],
+    max_size: float = PLOTLY_MARKER_SIZE_RANGE[1],
+) -> float:
     """Map a size value to a plotly marker diameter."""
     return _normalize_size(value, vmin, vmax, min_size, max_size)
 
@@ -145,7 +154,9 @@ def preprocess_domino_plot(
     switch_axis: bool = False,
 ) -> DominoPlotData:
     """Validate and preprocess long-format domino-plot input."""
-    missing = [c for c in (feature, celltype, contrast, fill, size) if c not in data.columns]
+    missing = [
+        c for c in (feature, celltype, contrast, fill, size) if c not in data.columns
+    ]
     if missing:
         raise KeyError(f"domino_plot: columns missing from data: {missing}")
     if label is not None and label not in data.columns:
@@ -253,7 +264,11 @@ def preprocess_domino_plot(
         fi = feature_index[feature_value]
         ci = celltype_index[celltype_value]
         slot = contrast_index[contrast_value]
-        x = fi * GROUP_SPACING + CONTRAST_BOX_CENTERS[slot] + CONTRAST_POINT_X_OFFSETS[slot]
+        x = (
+            fi * GROUP_SPACING
+            + CONTRAST_BOX_CENTERS[slot]
+            + CONTRAST_POINT_X_OFFSETS[slot]
+        )
         y = ci + 1.0 + CONTRAST_POINT_Y_OFFSETS[slot]
         label_value = None
         if label is not None and pd.notna(row[label]):
@@ -262,8 +277,12 @@ def preprocess_domino_plot(
             DominoPoint(
                 x=x,
                 y=y,
-                fill_value=float(fill_values.loc[idx]) if pd.notna(fill_values.loc[idx]) else None,
-                size_value=float(size_values.loc[idx]) if pd.notna(size_values.loc[idx]) else None,
+                fill_value=float(fill_values.loc[idx])
+                if pd.notna(fill_values.loc[idx])
+                else None,
+                size_value=float(size_values.loc[idx])
+                if pd.notna(size_values.loc[idx])
+                else None,
                 feature_value=feature_value,
                 celltype_value=celltype_value,
                 contrast_value=contrast_value,
@@ -272,8 +291,12 @@ def preprocess_domino_plot(
             )
         )
 
-    valid_fill_values = [point.fill_value for point in points if point.fill_value is not None]
-    valid_size_values = [point.size_value for point in points if point.size_value is not None]
+    valid_fill_values = [
+        point.fill_value for point in points if point.fill_value is not None
+    ]
+    valid_size_values = [
+        point.size_value for point in points if point.size_value is not None
+    ]
     fill_extent = None
     size_extent = None
     if valid_fill_values:
@@ -284,12 +307,20 @@ def preprocess_domino_plot(
     dp = DominoPlotData(
         points=points,
         boxes=boxes,
-        x_tickvals=[i * GROUP_SPACING + GROUP_CENTER for i in range(len(feature_values))],
+        x_tickvals=[
+            i * GROUP_SPACING + GROUP_CENTER for i in range(len(feature_values))
+        ],
         x_ticktext=list(feature_values),
         y_tickvals=[i + 1.0 for i in range(len(celltype_values))],
         y_ticktext=list(celltype_values),
-        x_range=(min(box.x0 for box in boxes) - 0.2, max(box.x1 for box in boxes) + 0.2),
-        y_range=(min(box.y0 for box in boxes) - 0.1, max(box.y1 for box in boxes) + 0.1),
+        x_range=(
+            min(box.x0 for box in boxes) - 0.2,
+            max(box.x1 for box in boxes) + 0.2,
+        ),
+        y_range=(
+            min(box.y0 for box in boxes) - 0.1,
+            max(box.y1 for box in boxes) + 0.1,
+        ),
         x_axis_name=feature,
         y_axis_name=celltype,
         features=list(feature_values),
@@ -325,7 +356,12 @@ def get_domino_example_data() -> pd.DataFrame:
     contrasts = ["Type1", "Type2"]
 
     data = pd.DataFrame(
-        [(gene, cell_type, contrast) for gene in gene_list for cell_type in cell_types for contrast in contrasts],
+        [
+            (gene, cell_type, contrast)
+            for gene in gene_list
+            for cell_type in cell_types
+            for contrast in contrasts
+        ],
         columns=["gene", "Cell_Type", "Group"],
     )
 

@@ -20,9 +20,9 @@ from pydiceplot import dice_plot
 DATA = os.path.join(os.path.dirname(__file__), "data", "sample_dice_miRNA.csv")
 
 DIRECTION_COLORS = {
-    "Down":      "#2166AC",
+    "Down": "#2166AC",
     "Unchanged": "#CCCCCC",
-    "Up":        "#B2182B",
+    "Up": "#B2182B",
 }
 
 
@@ -36,7 +36,9 @@ def run(out_dir: str = "images") -> None:
 
     fig, _ = dice_plot(
         data,
-        x="miRNA", y="Compound", pips="Organ",
+        x="miRNA",
+        y="Compound",
+        pips="Organ",
         fill="direction",
         fill_palette=DIRECTION_COLORS,
         x_order=mirna_order,
@@ -47,8 +49,11 @@ def run(out_dir: str = "images") -> None:
         figsize=(10, 8),
     )
     os.makedirs(out_dir, exist_ok=True)
-    fig.savefig(os.path.join(out_dir, "ggport_mirna_direction.png"),
-                bbox_inches="tight", dpi=150)
+    fig.savefig(
+        os.path.join(out_dir, "ggport_mirna_direction.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
     plt.close(fig)
 
 

@@ -19,6 +19,7 @@ from typing import Optional, Sequence
 
 def _active_backend():
     from pydiceplot._backend import _backend
+
     module_name = f"pydiceplot.plots.backends._{_backend}_backend"
     return importlib.import_module(module_name)
 
@@ -54,11 +55,11 @@ def dice_plot(
     size_label: Optional[str] = None,
     pips_label: Optional[str] = None,
     # plot target — backend-specific
-    ax=None,                          # matplotlib only
-    fig=None,                         # plotly only
-    figsize=None,                     # matplotlib only — (width_in, height_in)
-    width: Optional[int] = None,      # plotly only — pixels
-    height: Optional[int] = None,     # plotly only — pixels
+    ax=None,  # matplotlib only
+    fig=None,  # plotly only
+    figsize=None,  # matplotlib only — (width_in, height_in)
+    width: Optional[int] = None,  # plotly only — pixels
+    height: Optional[int] = None,  # plotly only — pixels
     max_pips: int = 9,
 ):
     """Draw a dice plot.
@@ -116,12 +117,25 @@ def dice_plot(
     """
     backend = _active_backend()
     kwargs = dict(
-        pip_colors=pip_colors, fill=fill, fill_palette=fill_palette, size=size,
-        x_order=x_order, y_order=y_order, pips_order=pips_order,
-        pip_scale=pip_scale, tile_size=tile_size, grid_lines=grid_lines,
-        fill_range=fill_range, size_range=size_range, cmap=cmap,
-        title=title, xlabel=xlabel, ylabel=ylabel,
-        fill_label=fill_label, size_label=size_label, pips_label=pips_label,
+        pip_colors=pip_colors,
+        fill=fill,
+        fill_palette=fill_palette,
+        size=size,
+        x_order=x_order,
+        y_order=y_order,
+        pips_order=pips_order,
+        pip_scale=pip_scale,
+        tile_size=tile_size,
+        grid_lines=grid_lines,
+        fill_range=fill_range,
+        size_range=size_range,
+        cmap=cmap,
+        title=title,
+        xlabel=xlabel,
+        ylabel=ylabel,
+        fill_label=fill_label,
+        size_label=size_label,
+        pips_label=pips_label,
         max_pips=max_pips,
     )
     # Backend-specific plot targets
@@ -129,13 +143,17 @@ def dice_plot(
         if fig is not None:
             raise TypeError("dice_plot: `fig=` is a plotly-only argument")
         if width is not None or height is not None:
-            raise TypeError("dice_plot: `width`/`height` are plotly-only; use `figsize=`")
+            raise TypeError(
+                "dice_plot: `width`/`height` are plotly-only; use `figsize=`"
+            )
         kwargs.update(ax=ax, figsize=figsize)
     else:  # plotly
         if ax is not None:
             raise TypeError("dice_plot: `ax=` is a matplotlib-only argument")
         if figsize is not None:
-            raise TypeError("dice_plot: `figsize=` is matplotlib-only; use `width`/`height`")
+            raise TypeError(
+                "dice_plot: `figsize=` is matplotlib-only; use `width`/`height`"
+            )
         kwargs.update(fig=fig, width=width, height=height)
 
     return backend.plot_dice(data, x, y, pips, **kwargs)
@@ -164,11 +182,11 @@ def domino_plot(
     ylabel: Optional[str] = None,
     fill_label: Optional[str] = None,
     size_label: Optional[str] = None,
-    ax=None,                          # matplotlib only
-    fig=None,                         # plotly only
-    figsize=None,                     # matplotlib only — (width_in, height_in)
-    width: Optional[int] = None,      # plotly only — pixels
-    height: Optional[int] = None,     # plotly only — pixels
+    ax=None,  # matplotlib only
+    fig=None,  # plotly only
+    figsize=None,  # matplotlib only — (width_in, height_in)
+    width: Optional[int] = None,  # plotly only — pixels
+    height: Optional[int] = None,  # plotly only — pixels
 ):
     """Draw a domino plot.
 
@@ -214,23 +232,38 @@ def domino_plot(
     """
     backend = _active_backend()
     kwargs = dict(
-        features=features, label=label, fill=fill, size=size,
-        feature_order=feature_order, celltype_order=celltype_order,
-        contrast_order=contrast_order, contrast_labels=contrast_labels,
-        switch_axis=switch_axis, fill_range=fill_range, size_range=size_range,
-        cmap=cmap, title=title, xlabel=xlabel, ylabel=ylabel,
-        fill_label=fill_label, size_label=size_label,
+        features=features,
+        label=label,
+        fill=fill,
+        size=size,
+        feature_order=feature_order,
+        celltype_order=celltype_order,
+        contrast_order=contrast_order,
+        contrast_labels=contrast_labels,
+        switch_axis=switch_axis,
+        fill_range=fill_range,
+        size_range=size_range,
+        cmap=cmap,
+        title=title,
+        xlabel=xlabel,
+        ylabel=ylabel,
+        fill_label=fill_label,
+        size_label=size_label,
     )
     if backend.__name__.endswith("_matplotlib_backend"):
         if fig is not None:
             raise TypeError("domino_plot: `fig=` is a plotly-only argument")
         if width is not None or height is not None:
-            raise TypeError("domino_plot: `width`/`height` are plotly-only; use `figsize=`")
+            raise TypeError(
+                "domino_plot: `width`/`height` are plotly-only; use `figsize=`"
+            )
         kwargs.update(ax=ax, figsize=figsize)
     else:  # plotly
         if ax is not None:
             raise TypeError("domino_plot: `ax=` is a matplotlib-only argument")
         if figsize is not None:
-            raise TypeError("domino_plot: `figsize=` is matplotlib-only; use `width`/`height`")
+            raise TypeError(
+                "domino_plot: `figsize=` is matplotlib-only; use `width`/`height`"
+            )
         kwargs.update(fig=fig, width=width, height=height)
     return backend.plot_domino(data, feature, celltype, contrast, **kwargs)

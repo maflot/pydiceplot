@@ -29,9 +29,9 @@ class DicePoint:
     x_cat: str
     y_cat: str
     pip_colors: List[Optional[str]] = field(default_factory=list)
-    pip_fills:  List[Optional[float]] = field(default_factory=list)
-    pip_sizes:  List[Optional[float]] = field(default_factory=list)
-    tile_fill:  Optional[float] = None
+    pip_fills: List[Optional[float]] = field(default_factory=list)
+    pip_sizes: List[Optional[float]] = field(default_factory=list)
+    tile_fill: Optional[float] = None
 
 
 @dataclass
@@ -39,18 +39,20 @@ class DicePlotData:
     points: List[DicePoint]
     x_categories: List[str]
     y_categories: List[str]
-    pip_labels: List[str]          # one label per pip slot, in slot order
+    pip_labels: List[str]  # one label per pip slot, in slot order
     pip_colors: Optional[dict] = None  # legend palette (discrete)
     npips: int = 0
-    mode: str = "categorical"          # "categorical" | "per_dot"
+    mode: str = "categorical"  # "categorical" | "per_dot"
     fill_extent: Optional[tuple] = None
     size_extent: Optional[tuple] = None
 
     @property
-    def n_x(self) -> int: return len(self.x_categories)
+    def n_x(self) -> int:
+        return len(self.x_categories)
 
     @property
-    def n_y(self) -> int: return len(self.y_categories)
+    def n_y(self) -> int:
+        return len(self.y_categories)
 
 
 def _sorted_unique(series: pd.Series) -> List[str]:
@@ -143,6 +145,7 @@ def preprocess_dice_plot(
     if not valid.all():
         dropped = data.loc[~valid, pips].unique().tolist()
         import warnings
+
         warnings.warn(
             f"dice_plot: dropping rows with `pips` values not in pip_labels: {dropped}"
         )
@@ -206,6 +209,7 @@ def preprocess_dice_plot(
 
 # ── Sample data helpers ────────────────────────────────────────────────────
 
+
 def generate_automatic_colors(n_colors: int) -> List[str]:
     prop_cycle = plt.rcParams["axes.prop_cycle"]
     colors = list(prop_cycle.by_key()["color"])
@@ -222,15 +226,32 @@ def get_diceplot_example_data(n: int) -> pd.DataFrame:
 
     cell_types = ["Neuron", "Astrocyte", "Microglia", "Oligodendrocyte", "Endothelial"]
     pathways = [
-        "Apoptosis", "Inflammation", "Metabolism", "Signal Transduction",
-        "Synaptic Transmission", "Cell Cycle", "DNA Repair", "Protein Synthesis",
-        "Lipid Metabolism", "Neurotransmitter Release", "Oxidative Stress",
-        "Energy Production", "Calcium Signaling", "Synaptic Plasticity",
+        "Apoptosis",
+        "Inflammation",
+        "Metabolism",
+        "Signal Transduction",
+        "Synaptic Transmission",
+        "Cell Cycle",
+        "DNA Repair",
+        "Protein Synthesis",
+        "Lipid Metabolism",
+        "Neurotransmitter Release",
+        "Oxidative Stress",
+        "Energy Production",
+        "Calcium Signaling",
+        "Synaptic Plasticity",
         "Immune Response",
     ]
     pathology_vars = [
-        "Alzheimer's disease", "Cancer", "Flu", "ADHD", "Age", "Weight",
-        "Diabetes", "Obesity", "Hypertension",
+        "Alzheimer's disease",
+        "Cancer",
+        "Flu",
+        "ADHD",
+        "Age",
+        "Weight",
+        "Diabetes",
+        "Obesity",
+        "Hypertension",
     ][:n]
 
     rng = np.random.default_rng(123)

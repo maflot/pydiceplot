@@ -16,7 +16,9 @@ def run(out_dir: str = "images") -> None:
     data = get_domino_example_data()
     fig, _ = domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         features=["GeneA", "GeneB", "GeneC"],
         label="var",
         fill="logFC",
@@ -29,8 +31,9 @@ def run(out_dir: str = "images") -> None:
         figsize=(9, 5.5),
     )
     os.makedirs(out_dir, exist_ok=True)
-    fig.savefig(os.path.join(out_dir, "domino_example.png"),
-                bbox_inches="tight", dpi=150)
+    fig.savefig(
+        os.path.join(out_dir, "domino_example.png"), bbox_inches="tight", dpi=150
+    )
     plt.close(fig)
 
 

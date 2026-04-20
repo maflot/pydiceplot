@@ -29,11 +29,12 @@ def run(out_dir: str = "images") -> None:
     pydiceplot.set_backend("matplotlib")
 
     df = pd.read_csv(DATA)
-    df = df[df["gene"].isin(GENES) & df["contrast"].isin(CONTRASTS) & (df["PValue"] < 0.05)].copy()
+    df = df[
+        df["gene"].isin(GENES) & df["contrast"].isin(CONTRASTS) & (df["PValue"] < 0.05)
+    ].copy()
 
-    agg = (
-        df.groupby(["gene", "cell_type", "contrast"], as_index=False)
-        .agg(logFC=("logFC", "mean"), FDR=("FDR", "min"))
+    agg = df.groupby(["gene", "cell_type", "contrast"], as_index=False).agg(
+        logFC=("logFC", "mean"), FDR=("FDR", "min")
     )
     agg["neg_log10_fdr"] = [-math.log10(v) if v > 0 else 0 for v in agg["FDR"]]
 
@@ -41,8 +42,11 @@ def run(out_dir: str = "images") -> None:
 
     fig, _ = dice_plot(
         agg,
-        x="gene", y="cell_type", pips="contrast",
-        fill="logFC", size="neg_log10_fdr",
+        x="gene",
+        y="cell_type",
+        pips="contrast",
+        fill="logFC",
+        size="neg_log10_fdr",
         x_order=GENES,
         y_order=cell_types,
         pips_order=CONTRASTS,
@@ -55,8 +59,9 @@ def run(out_dir: str = "images") -> None:
         figsize=(12, 14),
     )
     os.makedirs(out_dir, exist_ok=True)
-    fig.savefig(os.path.join(out_dir, "ggport_zebra_domino.png"),
-                bbox_inches="tight", dpi=150)
+    fig.savefig(
+        os.path.join(out_dir, "ggport_zebra_domino.png"), bbox_inches="tight", dpi=150
+    )
     plt.close(fig)
 
 

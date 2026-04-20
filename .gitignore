@@ -48,3 +48,4 @@ cmake-build-debug/
 /dist/
 /pyDicePlot.egg-info/
 /pydiceplot.egg-info/
+/pydiceplot/_version.py

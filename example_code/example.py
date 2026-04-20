@@ -35,8 +35,7 @@ IMAGES_DIR = "images"
 
 def _save(fig, name: str):
     os.makedirs(IMAGES_DIR, exist_ok=True)
-    fig.savefig(os.path.join(IMAGES_DIR, f"{name}.png"),
-                bbox_inches="tight", dpi=150)
+    fig.savefig(os.path.join(IMAGES_DIR, f"{name}.png"), bbox_inches="tight", dpi=150)
     plt.close(fig)
 
 
@@ -46,7 +45,9 @@ def example_n_categorical(n: int, filename: str):
     present = list(data["PathologyVariable"].unique())
     fig, _ = dice_plot(
         data,
-        x="CellType", y="Pathway", pips="PathologyVariable",
+        x="CellType",
+        y="Pathway",
+        pips="PathologyVariable",
         pip_colors={v: palette[v] for v in present},
         title=f"Dice Plot with {n} Pathology Variables",
         figsize=(9, 10),
@@ -61,9 +62,13 @@ def example_per_dot_continuous(filename: str):
     data["nlq"] = rng.uniform(0.5, 4.0, len(data))
     fig, _ = dice_plot(
         data,
-        x="CellType", y="Pathway", pips="PathologyVariable",
-        fill="lfc", size="nlq",
-        fill_label="Log2FC", size_label="-log10(q)",
+        x="CellType",
+        y="Pathway",
+        pips="PathologyVariable",
+        fill="lfc",
+        size="nlq",
+        fill_label="Log2FC",
+        size_label="-log10(q)",
         cmap="RdBu_r",
         title="Per-dot continuous (Log2FC × -log10 q)",
         figsize=(10, 10),

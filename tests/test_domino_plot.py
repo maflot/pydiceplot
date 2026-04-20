@@ -1,6 +1,7 @@
 """Smoke and preprocessing tests for the public `domino_plot` API."""
 
 import matplotlib
+
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
@@ -21,7 +22,9 @@ def test_preprocess_domino_builds_boxes_and_points():
     data = get_domino_example_data()
     dp = preprocess_domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         features=["GeneA", "GeneB", "GeneC"],
         label="var",
         fill="logFC",
@@ -47,7 +50,9 @@ def test_preprocess_domino_rejects_more_than_two_contrasts():
     with pytest.raises(ValueError, match="exactly two contrasts"):
         preprocess_domino_plot(
             data,
-            "gene", "Cell_Type", "Group",
+            "gene",
+            "Cell_Type",
+            "Group",
             fill="logFC",
             size="neg_log10_adj_p",
         )
@@ -57,7 +62,9 @@ def test_preprocess_domino_switch_axis_swaps_axes():
     data = get_domino_example_data()
     dp = preprocess_domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         fill="logFC",
         size="neg_log10_adj_p",
         contrast_order=["Type1", "Type2"],
@@ -78,7 +85,9 @@ def test_matplotlib_domino_returns_fig_ax():
     data = get_domino_example_data()
     fig, ax = domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         features=["GeneA", "GeneB", "GeneC"],
         label="var",
         fill="logFC",
@@ -98,7 +107,9 @@ def test_matplotlib_domino_legend_has_position_dots_and_labels():
     data = get_domino_example_data()
     fig, _ = domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         fill="logFC",
         size="neg_log10_adj_p",
         contrast_order=["Type1", "Type2"],
@@ -123,7 +134,9 @@ def test_matplotlib_domino_with_existing_ax_returns_ax():
     fig, user_ax = plt.subplots(figsize=(8, 4))
     result = domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         fill="logFC",
         size="neg_log10_adj_p",
         contrast_order=["Type1", "Type2"],
@@ -139,7 +152,9 @@ def test_matplotlib_domino_rejects_plotly_kwargs():
     with pytest.raises(TypeError, match="plotly"):
         domino_plot(
             data,
-            "gene", "Cell_Type", "Group",
+            "gene",
+            "Cell_Type",
+            "Group",
             fill="logFC",
             size="neg_log10_adj_p",
             contrast_order=["Type1", "Type2"],
@@ -154,7 +169,9 @@ def test_plotly_domino_returns_figure():
     data = get_domino_example_data()
     fig = domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         label="var",
         fill="logFC",
         size="neg_log10_adj_p",
@@ -173,7 +190,9 @@ def test_plotly_domino_legend_has_position_dots_and_labels():
     data = get_domino_example_data()
     fig = domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         fill="logFC",
         size="neg_log10_adj_p",
         contrast_order=["Type1", "Type2"],
@@ -186,15 +205,22 @@ def test_plotly_domino_legend_has_position_dots_and_labels():
     assert "Type 1" in annotations
     assert "Type 2" in annotations
     top_legend_circles = [
-        shape for shape in fig.layout.shapes
-        if shape.type == "circle" and shape.xref == "paper" and shape.yref == "paper"
+        shape
+        for shape in fig.layout.shapes
+        if shape.type == "circle"
+        and shape.xref == "paper"
+        and shape.yref == "paper"
         and float(shape.y0) > 0.75
     ]
     assert len(top_legend_circles) == 2
     top_legend_lines = [
-        shape for shape in fig.layout.shapes
-        if shape.type == "line" and shape.xref == "paper" and shape.yref == "paper"
-        and float(shape.y0) > 0.70 and float(shape.y1) > 0.70
+        shape
+        for shape in fig.layout.shapes
+        if shape.type == "line"
+        and shape.xref == "paper"
+        and shape.yref == "paper"
+        and float(shape.y0) > 0.70
+        and float(shape.y1) > 0.70
     ]
     assert len(top_legend_lines) >= 4
 
@@ -207,7 +233,9 @@ def test_plotly_domino_with_existing_fig_reuses_figure():
     user_fig = go.Figure()
     result = domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         fill="logFC",
         size="neg_log10_adj_p",
         contrast_order=["Type1", "Type2"],
@@ -227,7 +255,9 @@ def test_plotly_domino_composition_on_fresh_fig_sets_axes_and_uses_full_domain()
     user_fig = go.Figure()
     result = domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         fill="logFC",
         size="neg_log10_adj_p",
         contrast_order=["Type1", "Type2"],
@@ -253,7 +283,9 @@ def test_plotly_domino_owns_figure_reserves_legend_domain():
     data = get_domino_example_data()
     fig = domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         fill="logFC",
         size="neg_log10_adj_p",
         contrast_order=["Type1", "Type2"],
@@ -268,13 +300,20 @@ def test_plotly_domino_hover_uses_raw_size_from_customdata():
     data = get_domino_example_data()
     fig = domino_plot(
         data,
-        "gene", "Cell_Type", "Group",
+        "gene",
+        "Cell_Type",
+        "Group",
         fill="logFC",
         size="neg_log10_adj_p",
         contrast_order=["Type1", "Type2"],
     )
-    scatter = next(trace for trace in fig.data if trace.type == "scatter"
-                   and trace.mode == "markers" and trace.customdata is not None)
+    scatter = next(
+        trace
+        for trace in fig.data
+        if trace.type == "scatter"
+        and trace.mode == "markers"
+        and trace.customdata is not None
+    )
     assert "%{customdata[4]" in scatter.hovertemplate
     assert "%{marker.size" not in scatter.hovertemplate
     # customdata rows: [feature, celltype, contrast_label, label, size_value]
@@ -293,7 +332,9 @@ def test_plotly_domino_rejects_matplotlib_kwargs():
         with pytest.raises(TypeError, match="matplotlib"):
             domino_plot(
                 data,
-                "gene", "Cell_Type", "Group",
+                "gene",
+                "Cell_Type",
+                "Group",
                 fill="logFC",
                 size="neg_log10_adj_p",
                 contrast_order=["Type1", "Type2"],

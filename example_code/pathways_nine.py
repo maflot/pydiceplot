@@ -28,15 +28,26 @@ from ._palette import register as register_palette
 
 
 PATHWAYS = [
-    "Wnt",      "Notch",     "Hedgehog",
-    "TGF-β",    "Hippo",     "PI3K-AKT",
-    "MAPK",     "JAK-STAT",  "NF-κB",
+    "Wnt",
+    "Notch",
+    "Hedgehog",
+    "TGF-β",
+    "Hippo",
+    "PI3K-AKT",
+    "MAPK",
+    "JAK-STAT",
+    "NF-κB",
 ]
 
 CELL_TYPES = [
-    "Fibroblast", "Macrophage", "T cell",
-    "Epithelial", "Endothelial",
-    "IntestinalSC", "NeuralSC", "Hepatocyte",
+    "Fibroblast",
+    "Macrophage",
+    "T cell",
+    "Epithelial",
+    "Endothelial",
+    "IntestinalSC",
+    "NeuralSC",
+    "Hepatocyte",
 ]
 
 TREATMENTS = ["Vehicle", "TGF-β1", "LPS", "WNT3A", "Hypoxia", "IFN-γ"]
@@ -48,11 +59,15 @@ def _synthesize() -> pd.DataFrame:
     for ct in CELL_TYPES:
         for tx in TREATMENTS:
             for pw in PATHWAYS:
-                rows.append({
-                    "cell_type": ct, "treatment": tx, "pathway": pw,
-                    "lfc": rng.normal(0.0, 0.45),
-                    "q":   rng.uniform(0.01, 0.9),
-                })
+                rows.append(
+                    {
+                        "cell_type": ct,
+                        "treatment": tx,
+                        "pathway": pw,
+                        "lfc": rng.normal(0.0, 0.45),
+                        "q": rng.uniform(0.01, 0.9),
+                    }
+                )
     df = pd.DataFrame(rows)
 
     def boost(mask, pathway, lfc_mean, q_mean):
@@ -62,7 +77,7 @@ def _synthesize() -> pd.DataFrame:
 
     fibro_tgf = (df["cell_type"] == "Fibroblast") & (df["treatment"] == "TGF-β1")
     boost(fibro_tgf, "TGF-β", 3.5, 1e-5)
-    boost(fibro_tgf, "MAPK",  1.2, 1e-3)
+    boost(fibro_tgf, "MAPK", 1.2, 1e-3)
 
     macro_lps = (df["cell_type"] == "Macrophage") & (df["treatment"] == "LPS")
     boost(macro_lps, "NF-κB", 3.8, 1e-6)
@@ -100,8 +115,11 @@ def run(out_dir: str = "images") -> None:
 
     fig, _ = dice_plot(
         df,
-        x="treatment", y="cell_type", pips="pathway",
-        fill="lfc", size="neg_log10_q",
+        x="treatment",
+        y="cell_type",
+        pips="pathway",
+        fill="lfc",
+        size="neg_log10_q",
         x_order=TREATMENTS,
         y_order=CELL_TYPES,
         pips_order=PATHWAYS,
@@ -115,8 +133,9 @@ def run(out_dir: str = "images") -> None:
         figsize=(13, 10),
     )
     os.makedirs(out_dir, exist_ok=True)
-    fig.savefig(os.path.join(out_dir, "ggport_pathways_nine.png"),
-                bbox_inches="tight", dpi=150)
+    fig.savefig(
+        os.path.join(out_dir, "ggport_pathways_nine.png"), bbox_inches="tight", dpi=150
+    )
     plt.close(fig)
 
 

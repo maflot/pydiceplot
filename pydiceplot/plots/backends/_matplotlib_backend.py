@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import os
 from types import SimpleNamespace
-from typing import Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -20,7 +20,6 @@ import matplotlib.cm as mpl_cm
 
 from ._dice_utils import DicePlotData, preprocess_dice_plot
 from ._layout import (
-    DiceLayout,
     compute_dice_layout,
     pip_grid_positions,
     scaled_pip_radius,
@@ -30,6 +29,7 @@ from ._layout import (
 # ───────────────────────────────────────────────────────────────────────────
 # Public entry point
 # ───────────────────────────────────────────────────────────────────────────
+
 
 def plot_dice(
     data,
@@ -72,9 +72,17 @@ def plot_dice(
     the caller passes `ax=`.
     """
     dp = preprocess_dice_plot(
-        data, x, y, pips,
-        pip_colors=pip_colors, fill=fill, fill_palette=fill_palette, size=size,
-        x_order=x_order, y_order=y_order, pips_order=pips_order,
+        data,
+        x,
+        y,
+        pips,
+        pip_colors=pip_colors,
+        fill=fill,
+        fill_palette=fill_palette,
+        size=size,
+        x_order=x_order,
+        y_order=y_order,
+        pips_order=pips_order,
         max_pips=max_pips,
     )
 
@@ -94,9 +102,13 @@ def plot_dice(
         legend_ax = None
 
     _draw_dice_grid(
-        ax, dp,
-        pip_scale=pip_scale, tile_size=tile_size,
-        grid_lines=grid_lines, fill_range=fill_range, size_range=size_range,
+        ax,
+        dp,
+        pip_scale=pip_scale,
+        tile_size=tile_size,
+        grid_lines=grid_lines,
+        fill_range=fill_range,
+        size_range=size_range,
         cmap=cmap,
     )
 
@@ -113,11 +125,14 @@ def plot_dice(
 
     if legend_ax is not None:
         _draw_legend_stack(
-            legend_ax, dp,
+            legend_ax,
+            dp,
             pips_label=pips_label or pips,
             fill_label=fill_label or fill,
             size_label=size_label or size,
-            fill_range=fill_range, size_range=size_range, cmap=cmap,
+            fill_range=fill_range,
+            size_range=size_range,
+            cmap=cmap,
             fig=fig,
         )
 
@@ -128,10 +143,17 @@ def plot_dice(
 # Grid rendering
 # ───────────────────────────────────────────────────────────────────────────
 
+
 def _draw_dice_grid(
-    ax: plt.Axes, dp: DicePlotData, *,
-    pip_scale: float, tile_size: float,
-    grid_lines: bool, fill_range, size_range, cmap: str,
+    ax: plt.Axes,
+    dp: DicePlotData,
+    *,
+    pip_scale: float,
+    tile_size: float,
+    grid_lines: bool,
+    fill_range,
+    size_range,
+    cmap: str,
 ):
     n_x, n_y = dp.n_x, dp.n_y
 
@@ -141,11 +163,15 @@ def _draw_dice_grid(
     ax.set_aspect("equal", adjustable="box")
 
     layout = compute_dice_layout(
-        n_x=n_x, n_y=n_y,
-        plot_width=float(n_x), plot_height=float(n_y),
-        plot_x0=0.5, plot_y0=0.5,
+        n_x=n_x,
+        n_y=n_y,
+        plot_width=float(n_x),
+        plot_height=float(n_y),
+        plot_x0=0.5,
+        plot_y0=0.5,
         tile_frac=tile_size,
-        pip_scale=pip_scale, npips=max(dp.npips, 1),
+        pip_scale=pip_scale,
+        npips=max(dp.npips, 1),
     )
 
     ax.set_xticks([i + 1 for i in range(n_x)])
@@ -171,11 +197,16 @@ def _draw_dice_grid(
         cx, cy = layout.tile_center(xi, yi)
         half = layout.tile_sq / 2.0
 
-        ax.add_patch(patches.Rectangle(
-            (cx - half, cy - half),
-            layout.tile_sq, layout.tile_sq,
-            linewidth=0.6, edgecolor="#888888", facecolor="white",
-        ))
+        ax.add_patch(
+            patches.Rectangle(
+                (cx - half, cy - half),
+                layout.tile_sq,
+                layout.tile_sq,
+                linewidth=0.6,
+                edgecolor="#888888",
+                facecolor="white",
+            )
+        )
 
         if grid_lines:
             for i in (1, 2):
@@ -183,12 +214,16 @@ def _draw_dice_grid(
                 ax.plot(
                     [cx - half + frac * layout.tile_sq] * 2,
                     [cy - half, cy + half],
-                    color="#cccccc", linewidth=0.4, zorder=1,
+                    color="#cccccc",
+                    linewidth=0.4,
+                    zorder=1,
                 )
                 ax.plot(
                     [cx - half, cx + half],
                     [cy - half + frac * layout.tile_sq] * 2,
-                    color="#cccccc", linewidth=0.4, zorder=1,
+                    color="#cccccc",
+                    linewidth=0.4,
+                    zorder=1,
                 )
 
         for k, (px, py) in enumerate(layout.pip_centers(cx, cy, y_down=True)):
@@ -197,7 +232,11 @@ def _draw_dice_grid(
                 if color is None:
                     continue
                 r = layout.base_pip_r
-                ax.add_patch(patches.Circle((px, py), r, facecolor=color, edgecolor="none", zorder=3))
+                ax.add_patch(
+                    patches.Circle(
+                        (px, py), r, facecolor=color, edgecolor="none", zorder=3
+                    )
+                )
             else:  # per_dot
                 fv = pt.pip_fills[k] if k < len(pt.pip_fills) else None
                 sv = pt.pip_sizes[k] if k < len(pt.pip_sizes) else None
@@ -207,8 +246,16 @@ def _draw_dice_grid(
                     r = scaled_pip_radius(layout, sv, smin, smax)
                 else:
                     r = layout.base_pip_r
-                color = mcolors.to_hex(cmap_obj(_norm(fv, fmin, fmax))) if fv is not None else "#444444"
-                ax.add_patch(patches.Circle((px, py), r, facecolor=color, edgecolor="none", zorder=3))
+                color = (
+                    mcolors.to_hex(cmap_obj(_norm(fv, fmin, fmax)))
+                    if fv is not None
+                    else "#444444"
+                )
+                ax.add_patch(
+                    patches.Circle(
+                        (px, py), r, facecolor=color, edgecolor="none", zorder=3
+                    )
+                )
 
 
 def _norm(v, vmin, vmax):
@@ -221,12 +268,17 @@ def _norm(v, vmin, vmax):
 # Legend stack
 # ───────────────────────────────────────────────────────────────────────────
 
+
 def _draw_legend_stack(
-    lax: plt.Axes, dp: DicePlotData, *,
+    lax: plt.Axes,
+    dp: DicePlotData,
+    *,
     pips_label: Optional[str],
     fill_label: Optional[str],
     size_label: Optional[str],
-    fill_range, size_range, cmap: str,
+    fill_range,
+    size_range,
+    cmap: str,
     fig: plt.Figure,
 ):
     lax.set_xlim(0, 1)
@@ -248,9 +300,13 @@ def _draw_legend_stack(
 
     if dp.mode == "per_dot" and dp.fill_extent is not None and fill_label:
         _legend_colorbar(
-            lax, dp, fill_label,
-            fill_range or dp.fill_extent, cmap,
-            fig=fig, cursor=cursor,
+            lax,
+            dp,
+            fill_label,
+            fill_range or dp.fill_extent,
+            cmap,
+            fig=fig,
+            cursor=cursor,
         )
 
 
@@ -264,14 +320,28 @@ def _legend_position(lax, dp: DicePlotData, title: str, y_top: float) -> float:
 
     box_top = y_top
     box_bot = y_top - total_h
-    lax.add_patch(patches.Rectangle(
-        (x0, box_bot), x1 - x0, total_h,
-        facecolor="#fafafa", edgecolor="#cccccc", linewidth=0.6,
-        transform=lax.transAxes, clip_on=False,
-    ))
-    lax.text((x0 + x1) / 2, y_top - title_h / 2 - box_pad,
-             title, ha="center", va="center", fontweight="bold", fontsize=9,
-             transform=lax.transAxes)
+    lax.add_patch(
+        patches.Rectangle(
+            (x0, box_bot),
+            x1 - x0,
+            total_h,
+            facecolor="#fafafa",
+            edgecolor="#cccccc",
+            linewidth=0.6,
+            transform=lax.transAxes,
+            clip_on=False,
+        )
+    )
+    lax.text(
+        (x0 + x1) / 2,
+        y_top - title_h / 2 - box_pad,
+        title,
+        ha="center",
+        va="center",
+        fontweight="bold",
+        fontsize=9,
+        transform=lax.transAxes,
+    )
 
     die_x0 = x0 + 0.05
     die_x1 = x1 - 0.05
@@ -282,24 +352,39 @@ def _legend_position(lax, dp: DicePlotData, title: str, y_top: float) -> float:
     cell_w = die_w / 3.0
     cell_h = die_hh / 3.0
 
-    lax.add_patch(patches.Rectangle(
-        (die_x0, die_y0), die_w, die_hh,
-        facecolor="white", edgecolor="#666666", linewidth=0.8,
-        transform=lax.transAxes, clip_on=False,
-    ))
+    lax.add_patch(
+        patches.Rectangle(
+            (die_x0, die_y0),
+            die_w,
+            die_hh,
+            facecolor="white",
+            edgecolor="#666666",
+            linewidth=0.8,
+            transform=lax.transAxes,
+            clip_on=False,
+        )
+    )
     for i in (1, 2):
         lax.plot(
-            [die_x0 + i * cell_w, die_x0 + i * cell_w], [die_y0, die_y1],
-            color="#999999", linewidth=0.4, linestyle=(0, (2, 2)),
-            transform=lax.transAxes, clip_on=False,
+            [die_x0 + i * cell_w, die_x0 + i * cell_w],
+            [die_y0, die_y1],
+            color="#999999",
+            linewidth=0.4,
+            linestyle=(0, (2, 2)),
+            transform=lax.transAxes,
+            clip_on=False,
         )
         lax.plot(
-            [die_x0, die_x1], [die_y0 + i * cell_h, die_y0 + i * cell_h],
-            color="#999999", linewidth=0.4, linestyle=(0, (2, 2)),
-            transform=lax.transAxes, clip_on=False,
+            [die_x0, die_x1],
+            [die_y0 + i * cell_h, die_y0 + i * cell_h],
+            color="#999999",
+            linewidth=0.4,
+            linestyle=(0, (2, 2)),
+            transform=lax.transAxes,
+            clip_on=False,
         )
 
-    longest = max((len(l) for l in dp.pip_labels), default=0)
+    longest = max((len(label) for label in dp.pip_labels), default=0)
     label_fs = 8
     if dp.npips >= 5 or longest >= 10:
         label_fs = 6
@@ -320,12 +405,26 @@ def _legend_position(lax, dp: DicePlotData, title: str, y_top: float) -> float:
         label = dp.pip_labels[k] if k < len(dp.pip_labels) else ""
         if label_fs <= 5 and len(label) > 14:
             label = label[:12] + "…"
-        lax.text(pip_cx, label_cy, label, ha="center", va="center", fontsize=label_fs,
-                 transform=lax.transAxes, clip_on=False)
+        lax.text(
+            pip_cx,
+            label_cy,
+            label,
+            ha="center",
+            va="center",
+            fontsize=label_fs,
+            transform=lax.transAxes,
+            clip_on=False,
+        )
 
     lax.scatter(
-        pip_xs, pip_ys, s=28, c="#222222", marker="o",
-        transform=lax.transAxes, clip_on=False, zorder=4,
+        pip_xs,
+        pip_ys,
+        s=28,
+        c="#222222",
+        marker="o",
+        transform=lax.transAxes,
+        clip_on=False,
+        zorder=4,
     )
 
     return box_bot
@@ -339,24 +438,54 @@ def _legend_pip_colors(lax, dp: DicePlotData, y_top: float) -> float:
     total_h = title_h + n * row_h + 2 * box_pad
     x0, x1 = 0.05, 0.95
     box_bot = y_top - total_h
-    lax.add_patch(patches.Rectangle(
-        (x0, box_bot), x1 - x0, total_h,
-        facecolor="#fafafa", edgecolor="#cccccc", linewidth=0.6,
-        transform=lax.transAxes, clip_on=False,
-    ))
-    lax.text((x0 + x1) / 2, y_top - title_h / 2 - box_pad / 2,
-             "Category", ha="center", va="center", fontweight="bold", fontsize=10,
-             transform=lax.transAxes)
+    lax.add_patch(
+        patches.Rectangle(
+            (x0, box_bot),
+            x1 - x0,
+            total_h,
+            facecolor="#fafafa",
+            edgecolor="#cccccc",
+            linewidth=0.6,
+            transform=lax.transAxes,
+            clip_on=False,
+        )
+    )
+    lax.text(
+        (x0 + x1) / 2,
+        y_top - title_h / 2 - box_pad / 2,
+        "Category",
+        ha="center",
+        va="center",
+        fontweight="bold",
+        fontsize=10,
+        transform=lax.transAxes,
+    )
     xs, ys, cs = [], [], []
     for i, (label, color) in enumerate(dp.pip_colors.items()):
         ry = y_top - title_h - box_pad - (i + 0.5) * row_h
         xs.append(x0 + 0.08)
         ys.append(ry)
         cs.append(color)
-        lax.text(x0 + 0.14, ry, label, ha="left", va="center", fontsize=8,
-                 transform=lax.transAxes)
-    lax.scatter(xs, ys, s=45, c=cs, edgecolors="#333333", linewidths=0.5,
-                transform=lax.transAxes, clip_on=False, zorder=4)
+        lax.text(
+            x0 + 0.14,
+            ry,
+            label,
+            ha="left",
+            va="center",
+            fontsize=8,
+            transform=lax.transAxes,
+        )
+    lax.scatter(
+        xs,
+        ys,
+        s=45,
+        c=cs,
+        edgecolors="#333333",
+        linewidths=0.5,
+        transform=lax.transAxes,
+        clip_on=False,
+        zorder=4,
+    )
     return box_bot
 
 
@@ -369,14 +498,28 @@ def _legend_size(lax, dp: DicePlotData, title: str, srange, y_top: float) -> flo
     total_h = title_h + len(pcts) * row_h + 2 * box_pad
     x0, x1 = 0.05, 0.95
     box_bot = y_top - total_h
-    lax.add_patch(patches.Rectangle(
-        (x0, box_bot), x1 - x0, total_h,
-        facecolor="#fafafa", edgecolor="#cccccc", linewidth=0.6,
-        transform=lax.transAxes, clip_on=False,
-    ))
-    lax.text((x0 + x1) / 2, y_top - title_h / 2 - box_pad / 2,
-             title, ha="center", va="center", fontweight="bold", fontsize=10,
-             transform=lax.transAxes)
+    lax.add_patch(
+        patches.Rectangle(
+            (x0, box_bot),
+            x1 - x0,
+            total_h,
+            facecolor="#fafafa",
+            edgecolor="#cccccc",
+            linewidth=0.6,
+            transform=lax.transAxes,
+            clip_on=False,
+        )
+    )
+    lax.text(
+        (x0 + x1) / 2,
+        y_top - title_h / 2 - box_pad / 2,
+        title,
+        ha="center",
+        va="center",
+        fontweight="bold",
+        fontsize=10,
+        transform=lax.transAxes,
+    )
     xs, ys, sizes = [], [], []
     for i, pct in enumerate(pcts):
         ry = y_top - title_h - box_pad - (i + 0.5) * row_h
@@ -384,15 +527,30 @@ def _legend_size(lax, dp: DicePlotData, title: str, srange, y_top: float) -> flo
         ys.append(ry)
         sizes.append(20 + pct * 90)
         value = smin + pct * (smax - smin)
-        lax.text(x0 + 0.22, ry, f"{value:.2f}", ha="left", va="center", fontsize=8,
-                 transform=lax.transAxes)
-    lax.scatter(xs, ys, s=sizes, c="#444444",
-                transform=lax.transAxes, clip_on=False, zorder=4)
+        lax.text(
+            x0 + 0.22,
+            ry,
+            f"{value:.2f}",
+            ha="left",
+            va="center",
+            fontsize=8,
+            transform=lax.transAxes,
+        )
+    lax.scatter(
+        xs, ys, s=sizes, c="#444444", transform=lax.transAxes, clip_on=False, zorder=4
+    )
     return box_bot
 
 
-def _legend_colorbar(lax: plt.Axes, dp: DicePlotData, title: str, frange, cmap: str,
-                      fig: plt.Figure, cursor: float):
+def _legend_colorbar(
+    lax: plt.Axes,
+    dp: DicePlotData,
+    title: str,
+    frange,
+    cmap: str,
+    fig: plt.Figure,
+    cursor: float,
+):
     fmin, fmax = frange
     sm = mpl_cm.ScalarMappable(
         norm=mcolors.Normalize(vmin=fmin, vmax=fmax),
@@ -448,10 +606,18 @@ def plot_domino(
     figsize: Optional[Tuple[float, float]] = None,
 ) -> Union[Tuple[plt.Figure, plt.Axes], plt.Axes]:
     dp = preprocess_domino_plot(
-        data, feature, celltype, contrast,
-        features=features, label=label, fill=fill, size=size,
-        feature_order=feature_order, celltype_order=celltype_order,
-        contrast_order=contrast_order, contrast_labels=contrast_labels,
+        data,
+        feature,
+        celltype,
+        contrast,
+        features=features,
+        label=label,
+        fill=fill,
+        size=size,
+        feature_order=feature_order,
+        celltype_order=celltype_order,
+        contrast_order=contrast_order,
+        contrast_labels=contrast_labels,
         switch_axis=switch_axis,
     )
 
@@ -472,8 +638,11 @@ def plot_domino(
         legend_ax = None
 
     _draw_domino_grid(
-        ax, dp,
-        fill_range=fill_range, size_range=size_range, cmap=cmap,
+        ax,
+        dp,
+        fill_range=fill_range,
+        size_range=size_range,
+        cmap=cmap,
     )
 
     ax.set_xlabel(xlabel or dp.x_axis_name)
@@ -483,11 +652,14 @@ def plot_domino(
 
     if legend_ax is not None:
         _draw_domino_legend_stack(
-            legend_ax, dp,
+            legend_ax,
+            dp,
             size_label=size_label or size,
             fill_label=fill_label or fill,
-            size_range=size_range, fill_range=fill_range,
-            cmap=cmap, fig=fig,
+            size_range=size_range,
+            fill_range=fill_range,
+            cmap=cmap,
+            fig=fig,
         )
 
     return (fig, ax) if owns_figure else ax
@@ -514,16 +686,22 @@ def _draw_domino_grid(
         ax.spines[spine].set_visible(False)
 
     for box in dp.boxes:
-        ax.add_patch(patches.Rectangle(
-            (box.x0, box.y0),
-            box.x1 - box.x0,
-            box.y1 - box.y0,
-            linewidth=0.6,
-            edgecolor="#888888",
-            facecolor="white",
-        ))
+        ax.add_patch(
+            patches.Rectangle(
+                (box.x0, box.y0),
+                box.x1 - box.x0,
+                box.y1 - box.y0,
+                linewidth=0.6,
+                edgecolor="#888888",
+                facecolor="white",
+            )
+        )
 
-    points = [point for point in dp.points if point.fill_value is not None or point.size_value is not None]
+    points = [
+        point
+        for point in dp.points
+        if point.fill_value is not None or point.size_value is not None
+    ]
     if not points:
         return
 
@@ -537,7 +715,8 @@ def _draw_domino_grid(
         s=[scaled_domino_marker_area(point.size_value, smin, smax) for point in points],
         c=[
             mcolors.to_hex(cmap_obj(_norm(point.fill_value, fmin, fmax)))
-            if point.fill_value is not None else "#666666"
+            if point.fill_value is not None
+            else "#666666"
             for point in points
         ],
         edgecolors="#111111",
@@ -565,13 +744,19 @@ def _draw_domino_legend_stack(
     cursor -= 0.03
 
     if dp.size_extent is not None and size_label:
-        cursor = _legend_domino_size(lax, size_label, size_range or dp.size_extent, cursor)
+        cursor = _legend_domino_size(
+            lax, size_label, size_range or dp.size_extent, cursor
+        )
         cursor -= 0.03
 
     if dp.fill_extent is not None and fill_label:
         _legend_domino_colorbar(
-            lax, fill_label, fill_range or dp.fill_extent,
-            cmap=cmap, fig=fig, cursor=cursor,
+            lax,
+            fill_label,
+            fill_range or dp.fill_extent,
+            cmap=cmap,
+            fig=fig,
+            cursor=cursor,
         )
 
 
@@ -590,14 +775,26 @@ def _legend_domino_size(lax: plt.Axes, title: str, srange, y_top: float) -> floa
     x0, x1 = 0.05, 0.95
     box_bot = y_top - total_h
 
-    lax.add_patch(patches.Rectangle(
-        (x0, box_bot), x1 - x0, total_h,
-        facecolor="#fafafa", edgecolor="#cccccc", linewidth=0.6,
-        transform=lax.transAxes, clip_on=False,
-    ))
+    lax.add_patch(
+        patches.Rectangle(
+            (x0, box_bot),
+            x1 - x0,
+            total_h,
+            facecolor="#fafafa",
+            edgecolor="#cccccc",
+            linewidth=0.6,
+            transform=lax.transAxes,
+            clip_on=False,
+        )
+    )
     lax.text(
-        (x0 + x1) / 2, y_top - title_h / 2 - box_pad / 2,
-        title, ha="center", va="center", fontweight="bold", fontsize=10,
+        (x0 + x1) / 2,
+        y_top - title_h / 2 - box_pad / 2,
+        title,
+        ha="center",
+        va="center",
+        fontweight="bold",
+        fontsize=10,
         transform=lax.transAxes,
     )
 
@@ -608,13 +805,22 @@ def _legend_domino_size(lax: plt.Axes, title: str, srange, y_top: float) -> floa
         ys.append(ry)
         sizes.append(scaled_domino_marker_area(level, smin, smax))
         lax.text(
-            x0 + 0.25, ry, f"{level:.2f}",
-            ha="left", va="center", fontsize=8,
+            x0 + 0.25,
+            ry,
+            f"{level:.2f}",
+            ha="left",
+            va="center",
+            fontsize=8,
             transform=lax.transAxes,
         )
     lax.scatter(
-        xs, ys, s=sizes, c="#444444",
-        transform=lax.transAxes, clip_on=False, zorder=4,
+        xs,
+        ys,
+        s=sizes,
+        c="#444444",
+        transform=lax.transAxes,
+        clip_on=False,
+        zorder=4,
     )
     return box_bot
 

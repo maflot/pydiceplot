@@ -16,6 +16,7 @@ def register() -> None:
     if NAME in colormaps:
         return
     cmap = LinearSegmentedColormap.from_list(
-        NAME, ["#40004B", "#FFFFFF", "#00441B"],
+        NAME,
+        ["#40004B", "#FFFFFF", "#00441B"],
     )
     colormaps.register(cmap, name=NAME)

@@ -29,18 +29,44 @@ TRADITIONAL_OFFSETS = {
     3: [(-0.40, 0.40), (0.00, 0.00), (0.40, -0.40)],
     4: [(-0.40, 0.40), (0.40, 0.40), (-0.40, -0.40), (0.40, -0.40)],
     5: [(-0.40, 0.40), (0.40, 0.40), (0.00, 0.00), (-0.40, -0.40), (0.40, -0.40)],
-    6: [(-0.40, 0.40), (0.40, 0.40),
-        (-0.40, 0.00), (0.40, 0.00),
-        (-0.40, -0.40), (0.40, -0.40)],
-    7: [(-0.40, 0.40), (0.40, 0.40),
-        (-0.40, 0.00), (0.00, 0.00), (0.40, 0.00),
-        (-0.40, -0.40), (0.40, -0.40)],
-    8: [(-0.40, 0.40), (0.00, 0.40), (0.40, 0.40),
-        (-0.40, 0.00), (0.40, 0.00),
-        (-0.40, -0.40), (0.00, -0.40), (0.40, -0.40)],
-    9: [(-0.40, 0.40), (0.00, 0.40), (0.40, 0.40),
-        (-0.40, 0.00), (0.00, 0.00), (0.40, 0.00),
-        (-0.40, -0.40), (0.00, -0.40), (0.40, -0.40)],
+    6: [
+        (-0.40, 0.40),
+        (0.40, 0.40),
+        (-0.40, 0.00),
+        (0.40, 0.00),
+        (-0.40, -0.40),
+        (0.40, -0.40),
+    ],
+    7: [
+        (-0.40, 0.40),
+        (0.40, 0.40),
+        (-0.40, 0.00),
+        (0.00, 0.00),
+        (0.40, 0.00),
+        (-0.40, -0.40),
+        (0.40, -0.40),
+    ],
+    8: [
+        (-0.40, 0.40),
+        (0.00, 0.40),
+        (0.40, 0.40),
+        (-0.40, 0.00),
+        (0.40, 0.00),
+        (-0.40, -0.40),
+        (0.00, -0.40),
+        (0.40, -0.40),
+    ],
+    9: [
+        (-0.40, 0.40),
+        (0.00, 0.40),
+        (0.40, 0.40),
+        (-0.40, 0.00),
+        (0.00, 0.00),
+        (0.40, 0.00),
+        (-0.40, -0.40),
+        (0.00, -0.40),
+        (0.40, -0.40),
+    ],
 }
 
 
@@ -76,17 +102,23 @@ def test_grid_positions_are_row_col():
 def test_grid_positions_for_six_are_two_columns():
     """n=6 must be two vertical columns: TL, TR, ML, MR, BL, BR."""
     assert pip_grid_positions(6) == [
-        (0, 0), (0, 2),
-        (1, 0), (1, 2),
-        (2, 0), (2, 2),
+        (0, 0),
+        (0, 2),
+        (1, 0),
+        (1, 2),
+        (2, 0),
+        (2, 2),
     ]
 
 
 def test_compute_dice_layout_centres_square_grid():
     lay = compute_dice_layout(
-        n_x=4, n_y=2,
-        plot_width=100.0, plot_height=100.0,
-        tile_frac=0.8, npips=4,
+        n_x=4,
+        n_y=2,
+        plot_width=100.0,
+        plot_height=100.0,
+        tile_frac=0.8,
+        npips=4,
     )
     # Square cell = min(100/4, 100/2) = 25
     assert lay.cell_sq == pytest.approx(25.0)
@@ -105,17 +137,23 @@ def test_compute_dice_layout_rejects_bad_inputs():
     with pytest.raises(ValueError):
         compute_dice_layout(n_x=2, n_y=2, plot_width=100, plot_height=100, npips=10)
     with pytest.raises(ValueError):
-        compute_dice_layout(n_x=2, n_y=2, plot_width=100, plot_height=100,
-                            npips=4, tile_frac=0.0)
+        compute_dice_layout(
+            n_x=2, n_y=2, plot_width=100, plot_height=100, npips=4, tile_frac=0.0
+        )
     with pytest.raises(ValueError):
-        compute_dice_layout(n_x=2, n_y=2, plot_width=100, plot_height=100,
-                            npips=4, tile_frac=1.5)
+        compute_dice_layout(
+            n_x=2, n_y=2, plot_width=100, plot_height=100, npips=4, tile_frac=1.5
+        )
 
 
 def test_scaled_pip_radius_clamps_and_maps():
     lay = compute_dice_layout(
-        n_x=2, n_y=2, plot_width=60, plot_height=60,
-        tile_frac=0.8, npips=4,
+        n_x=2,
+        n_y=2,
+        plot_width=60,
+        plot_height=60,
+        tile_frac=0.8,
+        npips=4,
     )
     base = lay.base_pip_r
     # None → min_fill (0.25)

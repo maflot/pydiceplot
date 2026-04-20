@@ -1,18 +1,19 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=80", "wheel", "setuptools-scm>=8"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pydiceplot"
-version = "1.0.0"
+dynamic = ["version"]
 description = "Dice plots for high-dimensional categorical data, with matplotlib and plotly backends"
 authors = [
-    { name = "Matthias Flotho", email = "Matthias.Flotho@ccb.uni-saarland.de" },
-    { name = "Philipp Flotho", email = "Philipp.Flotho@uni-saarland.de" }
+    { name = "Philipp Flotho" },
+    { name = "Matthias Flotho" }
 ]
-license = { text = "MIT" }
+license = "MIT"
 urls = { "Homepage" = "https://dice-and-domino-plot.readthedocs.io/en/latest/" }
-readme = "readme.md"
+readme = "README.md"
+requires-python = ">=3.10"
 dependencies = [
     "pandas>=1.0",
     "numpy>=1.18",
@@ -22,5 +23,17 @@ dependencies = [
     "kaleido>=0.2",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=5.0.0",
+]
+
 [tool.setuptools]
 packages = ["pydiceplot", "pydiceplot.plots", "pydiceplot.plots.backends"]
+
+[tool.setuptools_scm]
+version_file = "pydiceplot/_version.py"
+version_scheme = "no-guess-dev"
+local_scheme = "no-local-version"
+tag_regex = "^v(?P<version>.+)$"

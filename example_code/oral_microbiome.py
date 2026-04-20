@@ -29,8 +29,11 @@ def run(out_dir: str = "images") -> None:
 
     fig, _ = dice_plot(
         data,
-        x="specimen", y="taxon", pips="disease",
-        fill="lfc", size="neg_log10_q",
+        x="specimen",
+        y="taxon",
+        pips="disease",
+        fill="lfc",
+        size="neg_log10_q",
         title="Oral microbiome — Log2FC × -log10 q",
         fill_label="Log2FC",
         size_label="-log10(q)",
@@ -40,8 +43,11 @@ def run(out_dir: str = "images") -> None:
         figsize=(10, 10),
     )
     os.makedirs(out_dir, exist_ok=True)
-    fig.savefig(os.path.join(out_dir, "ggport_oral_microbiome.png"),
-                bbox_inches="tight", dpi=150)
+    fig.savefig(
+        os.path.join(out_dir, "ggport_oral_microbiome.png"),
+        bbox_inches="tight",
+        dpi=150,
+    )
     plt.close(fig)
 
 

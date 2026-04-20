@@ -16,19 +16,19 @@ The dice-face lookup table matches ggdiceplot's `make_offsets()` exactly.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Sequence, Tuple
+from typing import List, Tuple
 
 
 DICE_POSITIONS: dict[int, List[int]] = {
     1: [5],
     2: [1, 9],
     3: [1, 5, 9],
-    4: [1, 3, 7, 9],              # four corners
-    5: [1, 3, 5, 7, 9],            # corners + centre
-    6: [1, 3, 4, 6, 7, 9],         # traditional die: two vertical columns
-    7: [1, 3, 4, 5, 6, 7, 9],       # 6 + centre
-    8: [1, 2, 3, 4, 6, 7, 8, 9],    # 3×3 minus centre
-    9: [1, 2, 3, 4, 5, 6, 7, 8, 9], # fully populated 3×3
+    4: [1, 3, 7, 9],  # four corners
+    5: [1, 3, 5, 7, 9],  # corners + centre
+    6: [1, 3, 4, 6, 7, 9],  # traditional die: two vertical columns
+    7: [1, 3, 4, 5, 6, 7, 9],  # 6 + centre
+    8: [1, 2, 3, 4, 6, 7, 8, 9],  # 3×3 minus centre
+    9: [1, 2, 3, 4, 5, 6, 7, 8, 9],  # fully populated 3×3
 }
 
 # Position→(row, col) mapping uses natural reading order:
@@ -63,7 +63,7 @@ def pip_offsets(
     avail_w = cell_width - 2.0 * pad
     avail_h = cell_height - 2.0 * pad
     out: List[Tuple[float, float]] = []
-    for (row, col) in pip_grid_positions(npips):
+    for row, col in pip_grid_positions(npips):
         dx = col / 2.0 * avail_w + pad - cell_width / 2.0
         dy = row / 2.0 * avail_h + pad - cell_height / 2.0
         out.append((dx, dy))
@@ -81,14 +81,14 @@ class DiceLayout:
 
     n_x: int
     n_y: int
-    cell_sq: float          # square cell side (unit of the category grid)
-    tile_sq: float          # square tile inside a cell (tile = cell * tile_frac)
-    sub: float              # pip sub-cell side (tile_sq / 3)
-    grid_x0: float          # x of left grid edge
-    grid_y0: float          # y of top grid edge
-    grid_w: float           # total grid width  (n_x * cell_sq)
-    grid_h: float           # total grid height (n_y * cell_sq)
-    base_pip_r: float       # max pip radius (sub/2 * pip_scale)
+    cell_sq: float  # square cell side (unit of the category grid)
+    tile_sq: float  # square tile inside a cell (tile = cell * tile_frac)
+    sub: float  # pip sub-cell side (tile_sq / 3)
+    grid_x0: float  # x of left grid edge
+    grid_y0: float  # y of top grid edge
+    grid_w: float  # total grid width  (n_x * cell_sq)
+    grid_h: float  # total grid height (n_y * cell_sq)
+    base_pip_r: float  # max pip radius (sub/2 * pip_scale)
     pip_scale: float
     npips: int
     tile_frac: float
@@ -98,14 +98,16 @@ class DiceLayout:
         cy = self.grid_y0 + (yi + 0.5) * self.cell_sq
         return cx, cy
 
-    def pip_centers(self, cx: float, cy: float, y_down: bool = True) -> List[Tuple[float, float]]:
+    def pip_centers(
+        self, cx: float, cy: float, y_down: bool = True
+    ) -> List[Tuple[float, float]]:
         """Absolute pip centers around tile center `(cx, cy)`.
 
         `y_down=True` (default) places row 0 above `cy` (matches SVG/matplotlib
         with an inverted y-axis). `y_down=False` mirrors for y-up coord systems.
         """
         out: List[Tuple[float, float]] = []
-        for (row, col) in pip_grid_positions(self.npips):
+        for row, col in pip_grid_positions(self.npips):
             dx = (col - 1) * self.sub
             dy = (row - 1) * self.sub
             if not y_down:
