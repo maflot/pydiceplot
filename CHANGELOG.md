@@ -2,7 +2,8 @@
 
 ## 1.0.0 — 2026-04-15
 
-Complete rewrite of the dice-plot engine and public API.
+Complete rewrite of the dice-plot engine and public API, plus a full domino
+API refactor to match the new 1.0 conventions.
 
 ### Breaking changes
 
@@ -16,6 +17,11 @@ Complete rewrite of the dice-plot engine and public API.
 - **Native return types.** matplotlib: `(Figure, Axes)` when creating a new
   figure, just `Axes` when the caller supplies `ax=`. plotly: `go.Figure`.
   The old wrapper return types are gone.
+- **`domino_plot` rewritten around a column-first API.** The old
+  `gene_list`/`var_id`/`logfc_col`/`pval_col`-style entry point is replaced by
+  `domino_plot(data, feature, celltype, contrast, *, fill=..., size=..., ...)`
+  with native backend returns, explicit contrast ordering, and backend-specific
+  `ax=` / `fig=` composition hooks.
 - **`n=6` uses traditional die-face layout** (two vertical columns) instead
   of the transposed two-row layout from earlier versions. This is an
   intentional divergence from `ggdiceplot::make_offsets`.
@@ -37,6 +43,9 @@ Complete rewrite of the dice-plot engine and public API.
   the caller provides `ax=` / `fig=`.
 - **`ax=` / `fig=` composability.** Draw into an existing matplotlib `Axes`
   or plotly `Figure` to build multi-panel layouts.
+- **Domino preprocessing rewrite.** Domino plots now validate their structural
+  columns up front, enforce exactly two contrast slots, compute shared backend
+  geometry once, and use the same color/size range semantics as `dice_plot`.
 - **Tile geometry controls.** `tile_width`, `tile_height`, `pip_scale`,
   `grid_lines` parameters.
 - **Label controls.** `fill_label`, `size_label`, `pips_label` set legend
@@ -48,6 +57,7 @@ Complete rewrite of the dice-plot engine and public API.
 
 - 1-to-1 ports of ggdiceplot demo plots: `oral_microbiome.py`,
   `oral_microbiome_fill_only.py`, `mirna_direction.py`, `zebra_domino.py`.
+- Standalone `example_domino.py`: demonstrates the refactored domino API.
 - Creative `pathways_nine.py`: nine signaling pathways on a 3×3 die face.
 - Showcase `example.py`: generates all `images/dice_*.png` gallery images.
 
@@ -55,6 +65,8 @@ Complete rewrite of the dice-plot engine and public API.
 
 - `test_dice_plot.py`: smoke tests covering all three modes (categorical,
   continuous, discrete fill), both backends, return types, and preprocessing.
+- `test_domino_plot.py`: preprocessing, switch-axis, composition, validation,
+  and backend smoke tests for the refactored domino API.
 - `test_layout.py`: geometry unit tests for pip positions and tile sizing.
 
 ## 0.0.2 — 2025

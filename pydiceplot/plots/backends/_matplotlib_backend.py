@@ -414,69 +414,270 @@ def _legend_colorbar(lax: plt.Axes, dp: DicePlotData, title: str, frange, cmap: 
 
 
 # ───────────────────────────────────────────────────────────────────────────
-# Legacy shims for the domino plot
-# (Kept for back-compat — the dice_plot rewrite leaves the domino code alone.)
+# Domino plot
 # ───────────────────────────────────────────────────────────────────────────
 
-from ._domino_utils import preprocess_domino_plot, switch_axes_domino  # noqa: E402
+from ._domino_utils import (  # noqa: E402
+    DominoPlotData,
+    preprocess_domino_plot,
+    scaled_domino_marker_area,
+)
 
 
-def plot_domino(data, gene_list, switch_axis=False, min_dot_size=1, max_dot_size=5,
-                spacing_factor=3, var_id="var", feature_col="gene", celltype_col="CellType",
-                contrast_col="Contrast", contrast_levels=("Clinical", "Pathological"),
-                contrast_labels=("Clinical", "Pathological"), logfc_col="avg_log2FC",
-                pval_col="p_val_adj", logfc_limits=(-1.5, 1.5),
-                logfc_colors=None, color_scale_name="Log2 Fold Change",
-                axis_text_size=8, aspect_ratio=None, base_width=5, base_height=4,
-                title=None, xlabel=None, ylabel=None):
-    plot_data, aspect_ratio, unique_celltypes, unique_genes, logfc_colors = preprocess_domino_plot(
-        data, gene_list, spacing_factor, list(contrast_levels), feature_col, celltype_col,
-        contrast_col, var_id, logfc_col, pval_col, logfc_limits, min_dot_size, max_dot_size,
-        logfc_colors,
+def plot_domino(
+    data,
+    feature: str,
+    celltype: str,
+    contrast: str,
+    *,
+    features=None,
+    label=None,
+    fill: str,
+    size: str,
+    feature_order=None,
+    celltype_order=None,
+    contrast_order=None,
+    contrast_labels=None,
+    switch_axis: bool = False,
+    fill_range=None,
+    size_range=None,
+    cmap: str = "RdBu_r",
+    title: Optional[str] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    fill_label: Optional[str] = None,
+    size_label: Optional[str] = None,
+    ax: Optional[plt.Axes] = None,
+    figsize: Optional[Tuple[float, float]] = None,
+) -> Union[Tuple[plt.Figure, plt.Axes], plt.Axes]:
+    dp = preprocess_domino_plot(
+        data, feature, celltype, contrast,
+        features=features, label=label, fill=fill, size=size,
+        feature_order=feature_order, celltype_order=celltype_order,
+        contrast_order=contrast_order, contrast_labels=contrast_labels,
+        switch_axis=switch_axis,
     )
-    if switch_axis:
-        plot_data = switch_axes_domino(plot_data, "matplotlib")
-        unique_celltypes, gene_list = gene_list, unique_celltypes
 
-    fig, ax = plt.subplots(figsize=(base_width, base_height))
-    unique_pairs = plot_data[[feature_col, celltype_col]].drop_duplicates()
-    for _, row in unique_pairs.iterrows():
-        gi = gene_list.index(row[feature_col]) + 1
-        ci = unique_celltypes.index(row[celltype_col]) + 1
-        y_min, y_max = ci - 0.4, ci + 0.4
-        for idx, contrast in enumerate(contrast_levels):
-            base_x = (gi - 1) * spacing_factor + (1 if contrast == contrast_levels[0] else 2)
-            ax.add_patch(patches.Rectangle(
-                (base_x - 0.4, y_min), 0.8, y_max - y_min,
-                linewidth=0.5, edgecolor="grey", facecolor="white", alpha=0.5,
-            ))
+    owns_figure = ax is None
+    if owns_figure:
+        if figsize is None:
+            figsize = (
+                max(dp.n_features * 1.15 + 4.5, 7.5),
+                max(dp.n_celltypes * 0.55 + 2.5, 4.8),
+            )
+        fig = plt.figure(figsize=figsize)
+        gs = fig.add_gridspec(1, 2, width_ratios=[3.2, 1.0], wspace=0.08)
+        ax = fig.add_subplot(gs[0, 0])
+        legend_ax = fig.add_subplot(gs[0, 1])
+        legend_ax.set_axis_off()
+    else:
+        fig = ax.figure
+        legend_ax = None
 
-    from matplotlib.colors import LinearSegmentedColormap
-    dcmap = LinearSegmentedColormap.from_list("custom", [
-        (0.0, logfc_colors["low"]), (0.5, logfc_colors["mid"]), (1.0, logfc_colors["high"]),
-    ])
-    sc = ax.scatter(
-        plot_data["x_pos"], plot_data["y_pos"],
-        s=plot_data["size"] * 20, c=plot_data["adj_logfc"],
-        cmap=dcmap, edgecolors="black",
+    _draw_domino_grid(
+        ax, dp,
+        fill_range=fill_range, size_range=size_range, cmap=cmap,
     )
-    cbar = plt.colorbar(sc, ax=ax)
-    cbar.set_label(color_scale_name)
-    sc.set_clim(logfc_limits)
 
-    ax.set_xlim(0, len(gene_list) * spacing_factor + 2)
-    ax.set_ylim(0, len(unique_celltypes) + 1)
-    ax.set_xticks([(i * spacing_factor) + 1.5 for i in range(len(gene_list))])
-    ax.set_xticklabels(gene_list)
-    ax.set_yticks(range(1, len(unique_celltypes) + 1))
-    ax.set_yticklabels(unique_celltypes)
+    ax.set_xlabel(xlabel or dp.x_axis_name)
+    ax.set_ylabel(ylabel or dp.y_axis_name)
+    if title is not None:
+        ax.set_title(title)
+
+    if legend_ax is not None:
+        _draw_domino_legend_stack(
+            legend_ax, dp,
+            size_label=size_label or size,
+            fill_label=fill_label or fill,
+            size_range=size_range, fill_range=fill_range,
+            cmap=cmap, fig=fig,
+        )
+
+    return (fig, ax) if owns_figure else ax
+
+
+def _draw_domino_grid(
+    ax: plt.Axes,
+    dp: DominoPlotData,
+    *,
+    fill_range,
+    size_range,
+    cmap: str,
+):
+    ax.set_xlim(*dp.x_range)
+    ax.set_ylim(*dp.y_range)
     ax.invert_yaxis()
-    ax.set_xlabel(xlabel or ("Genes" if not switch_axis else "Cell Types"))
-    ax.set_ylabel(ylabel or ("Cell Types" if not switch_axis else "Genes"))
-    ax.set_title(title)
-    ax.tick_params(axis="both", which="major", labelsize=axis_text_size)
-    plt.subplots_adjust(left=0.2, right=0.8, top=0.9, bottom=0.1)
-    return fig
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xticks(dp.x_tickvals)
+    ax.set_xticklabels(dp.x_ticktext, rotation=45, ha="right")
+    ax.set_yticks(dp.y_tickvals)
+    ax.set_yticklabels(dp.y_ticktext)
+    ax.tick_params(axis="both", length=3, pad=2)
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
+
+    for box in dp.boxes:
+        ax.add_patch(patches.Rectangle(
+            (box.x0, box.y0),
+            box.x1 - box.x0,
+            box.y1 - box.y0,
+            linewidth=0.6,
+            edgecolor="#888888",
+            facecolor="white",
+        ))
+
+    points = [point for point in dp.points if point.fill_value is not None or point.size_value is not None]
+    if not points:
+        return
+
+    cmap_obj = matplotlib.colormaps.get_cmap(cmap)
+    fmin, fmax = fill_range or dp.fill_extent or (0.0, 1.0)
+    smin, smax = size_range or dp.size_extent or (0.0, 1.0)
+
+    ax.scatter(
+        [point.x for point in points],
+        [point.y for point in points],
+        s=[scaled_domino_marker_area(point.size_value, smin, smax) for point in points],
+        c=[
+            mcolors.to_hex(cmap_obj(_norm(point.fill_value, fmin, fmax)))
+            if point.fill_value is not None else "#666666"
+            for point in points
+        ],
+        edgecolors="#111111",
+        linewidths=0.7,
+        zorder=3,
+    )
+
+
+def _draw_domino_legend_stack(
+    lax: plt.Axes,
+    dp: DominoPlotData,
+    *,
+    size_label: Optional[str],
+    fill_label: Optional[str],
+    size_range,
+    fill_range,
+    cmap: str,
+    fig: plt.Figure,
+):
+    lax.set_xlim(0, 1)
+    lax.set_ylim(0, 1)
+    cursor = 0.98
+
+    cursor = _legend_domino_contrasts(lax, dp.contrast_labels, cursor)
+    cursor -= 0.03
+
+    if dp.size_extent is not None and size_label:
+        cursor = _legend_domino_size(lax, size_label, size_range or dp.size_extent, cursor)
+        cursor -= 0.03
+
+    if dp.fill_extent is not None and fill_label:
+        _legend_domino_colorbar(
+            lax, fill_label, fill_range or dp.fill_extent,
+            cmap=cmap, fig=fig, cursor=cursor,
+        )
+
+
+def _legend_domino_contrasts(lax: plt.Axes, labels: List[str], y_top: float) -> float:
+    x0, x1 = 0.05, 0.95
+    box_pad = 0.02
+    title_h = 0.03
+    demo_h = 0.13
+    total_h = title_h + demo_h + 2 * box_pad
+    box_bot = y_top - total_h
+
+    lax.add_patch(patches.Rectangle(
+        (x0, box_bot), x1 - x0, total_h,
+        facecolor="#fafafa", edgecolor="#cccccc", linewidth=0.6,
+        transform=lax.transAxes, clip_on=False,
+    ))
+    lax.text(
+        (x0 + x1) / 2, y_top - title_h / 2 - box_pad / 2,
+        "Contrast", ha="center", va="center", fontweight="bold", fontsize=10,
+        transform=lax.transAxes,
+    )
+
+    box_y = box_bot + box_pad + 0.05
+    rect_w = 0.18
+    rect_h = 0.04
+    rect_xs = [0.18, 0.58]
+    for rect_x, label in zip(rect_xs, labels):
+        lax.add_patch(patches.Rectangle(
+            (rect_x, box_y), rect_w, rect_h,
+            facecolor="white", edgecolor="#888888", linewidth=0.8,
+            transform=lax.transAxes, clip_on=False,
+        ))
+        lax.text(
+            rect_x + rect_w / 2, box_y + rect_h + 0.02,
+            label, ha="center", va="bottom", fontsize=8,
+            transform=lax.transAxes,
+        )
+    return box_bot
+
+
+def _legend_domino_size(lax: plt.Axes, title: str, srange, y_top: float) -> float:
+    smin, smax = srange
+    levels = [smin] if smax <= smin else [smin, (smin + smax) / 2.0, smax]
+    row_h = 0.045
+    box_pad = 0.02
+    title_h = 0.03
+    total_h = title_h + len(levels) * row_h + 2 * box_pad
+    x0, x1 = 0.05, 0.95
+    box_bot = y_top - total_h
+
+    lax.add_patch(patches.Rectangle(
+        (x0, box_bot), x1 - x0, total_h,
+        facecolor="#fafafa", edgecolor="#cccccc", linewidth=0.6,
+        transform=lax.transAxes, clip_on=False,
+    ))
+    lax.text(
+        (x0 + x1) / 2, y_top - title_h / 2 - box_pad / 2,
+        title, ha="center", va="center", fontweight="bold", fontsize=10,
+        transform=lax.transAxes,
+    )
+
+    xs, ys, sizes = [], [], []
+    for i, level in enumerate(levels):
+        ry = y_top - title_h - box_pad - (i + 0.5) * row_h
+        xs.append(x0 + 0.12)
+        ys.append(ry)
+        sizes.append(scaled_domino_marker_area(level, smin, smax))
+        lax.text(
+            x0 + 0.25, ry, f"{level:.2f}",
+            ha="left", va="center", fontsize=8,
+            transform=lax.transAxes,
+        )
+    lax.scatter(
+        xs, ys, s=sizes, c="#444444",
+        transform=lax.transAxes, clip_on=False, zorder=4,
+    )
+    return box_bot
+
+
+def _legend_domino_colorbar(
+    lax: plt.Axes,
+    title: str,
+    frange,
+    *,
+    cmap: str,
+    fig: plt.Figure,
+    cursor: float,
+):
+    fmin, fmax = frange
+    sm = mpl_cm.ScalarMappable(
+        norm=mcolors.Normalize(vmin=fmin, vmax=fmax),
+        cmap=matplotlib.colormaps.get_cmap(cmap),
+    )
+    sm.set_array([])
+    lax_bbox = lax.get_position()
+    cb_width = 0.018
+    cb_height = min(0.32, max(0.14, cursor * lax_bbox.height - 0.03))
+    cb_x = lax_bbox.x0 + (lax_bbox.width - cb_width) / 2
+    cb_y = lax_bbox.y0 + 0.05
+    cax = fig.add_axes([cb_x, cb_y, cb_width, cb_height])
+    cb = fig.colorbar(sm, cax=cax)
+    cb.set_label(title, fontsize=9)
+    cb.ax.tick_params(labelsize=8)
 
 
 def save_plot(fig, plot_path, output_str, formats):

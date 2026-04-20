@@ -22,6 +22,7 @@ from pydiceplot.plots.backends._dice_utils import (
 )
 
 from . import (
+    example_domino,
     oral_microbiome,
     oral_microbiome_fill_only,
     mirna_direction,
@@ -84,6 +85,7 @@ if __name__ == "__main__":
     oral_microbiome.run(IMAGES_DIR)
     oral_microbiome_fill_only.run(IMAGES_DIR)
     mirna_direction.run(IMAGES_DIR)
+    example_domino.run(IMAGES_DIR)
     zebra_domino.run(IMAGES_DIR)
 
     # Creative n=9 example

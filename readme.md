@@ -5,8 +5,9 @@
 
 **pydiceplot** draws dice plots: grids of die-face icons that encode up to
 nine categorical variables (one per pip slot) plus optional continuous fill
-and size mappings. It has matplotlib and plotly backends with a single
-seaborn-style `dice_plot(data, x, y, pips, ...)` entry point.
+and size mappings. It also ships a refactored `domino_plot(...)` API for
+two-contrast feature-by-celltype panels. Both plot types share matplotlib and
+plotly backends with seaborn-style entry points.
 
 It's the Python sibling of the R package
 [`ggdiceplot`](https://github.com/maflot/ggdiceplot). The grid geometry and
@@ -28,7 +29,7 @@ For development against this repo:
 git clone https://github.com/maflot/pydiceplot.git
 cd pydiceplot
 pixi install
-pixi run test     # 37 tests
+pixi run test     # 47 tests
 pixi run example  # regenerates the showcase images under images/
 pixi run build    # sdist + wheel in dist/
 ```
@@ -102,6 +103,30 @@ dice_plot(data, x="CellType", y="Pathway", pips="PathologyVariable",
 axes[1].plot(range(10))
 ```
 
+Domino plots use a matching column-first API. Each tile is a
+`(feature, celltype)` pair with exactly two contrast slots:
+
+```python
+from pydiceplot import domino_plot
+from pydiceplot.plots.backends._domino_utils import get_domino_example_data
+
+data = get_domino_example_data()
+
+fig, ax = domino_plot(
+    data,
+    "gene", "Cell_Type", "Group",
+    features=["GeneA", "GeneB", "GeneC"],
+    label="var",
+    fill="logFC",
+    size="neg_log10_adj_p",
+    contrast_order=["Type1", "Type2"],
+    contrast_labels=["Type 1", "Type 2"],
+    fill_label="Log2FC",
+    size_label="-log10(adj p)",
+    figsize=(9, 5.5),
+)
+```
+
 ## Modes
 
 `dice_plot` has three input modes, picked by which arguments you pass:
@@ -131,6 +156,12 @@ Everything below is produced by `example_code/example.py`. Regenerate with
 ![9-category dice plot (fully populated 3×3 face)](images/dice_9_categorical.png)
 
 ![Per-dot continuous fill and size](images/dice_per_dot_continuous.png)
+
+### Domino example
+
+The standalone domino example lives in `example_code/example_domino.py`.
+
+![Domino plot example](images/domino_example.png)
 
 ### 1-to-1 ports of ggdiceplot's demo plots
 
@@ -210,6 +241,35 @@ dice_plot(
 
 Use the native save/show methods on the return value: `fig.savefig(...)` /
 `plt.show()` for matplotlib, `fig.write_image(...)` / `fig.show()` for plotly.
+
+### `domino_plot(data, feature, celltype, contrast, *, ...)`
+
+```python
+domino_plot(
+    data, feature, celltype, contrast, *,
+    features=None,          # optional feature filter; also sets order by default
+    label=None,             # optional hover/annotation column
+    fill="logFC",           # numeric fill column
+    size="neg_log10_adj_p", # numeric size column
+    feature_order=None, celltype_order=None,
+    contrast_order=None,    # must contain exactly two contrast values
+    contrast_labels=None,   # human-readable labels for those two slots
+    switch_axis=False,
+    fill_range=None, size_range=None, cmap="RdBu_r",
+    title=None, xlabel=None, ylabel=None,
+    fill_label=None, size_label=None,
+    ax=None,                  # matplotlib: existing Axes
+    fig=None,                 # plotly: existing Figure
+    figsize=None,             # matplotlib: (width_in, height_in)
+    width=None, height=None,  # plotly: pixels
+)
+```
+
+**Returns**
+
+- matplotlib: `(Figure, Axes)` when we create the figure, just `Axes` when
+  the caller supplies `ax=`.
+- plotly: `plotly.graph_objects.Figure`.
 
 ### Pip slot layout
 

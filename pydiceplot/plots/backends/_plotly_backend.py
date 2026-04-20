@@ -452,70 +452,309 @@ def _add_colorbar(fig: go.Figure, title: str, frange, cmap: str, cursor: float):
 
 
 # ───────────────────────────────────────────────────────────────────────────
-# Legacy shims
+# Domino plot
 # ───────────────────────────────────────────────────────────────────────────
 
-from ._domino_utils import preprocess_domino_plot, switch_axes_domino  # noqa: E402
+from ._domino_utils import (  # noqa: E402
+    DominoPlotData,
+    domino_plotly_colorscale,
+    preprocess_domino_plot,
+    scaled_domino_marker_size,
+)
 
 
-def plot_domino(data, gene_list, switch_axis=False, min_dot_size=1, max_dot_size=5,
-                spacing_factor=3, var_id="var", feature_col="gene", celltype_col="CellType",
-                contrast_col="Contrast", contrast_levels=("Clinical", "Pathological"),
-                contrast_labels=("Clinical", "Pathological"), logfc_col="avg_log2FC",
-                pval_col="p_val_adj", logfc_limits=(-1.5, 1.5),
-                logfc_colors=None, color_scale_name="Log2 Fold Change",
-                axis_text_size=8, aspect_ratio=None, base_width=5, base_height=4,
-                title=None, xlabel=None, ylabel=None):
-    plot_data, aspect_ratio, unique_celltypes, unique_genes, logfc_colors = preprocess_domino_plot(
-        data, gene_list, spacing_factor, list(contrast_levels), feature_col, celltype_col,
-        contrast_col, var_id, logfc_col, pval_col, logfc_limits, min_dot_size, max_dot_size,
-        logfc_colors,
+def plot_domino(
+    data,
+    feature: str,
+    celltype: str,
+    contrast: str,
+    *,
+    features=None,
+    label=None,
+    fill: str,
+    size: str,
+    feature_order=None,
+    celltype_order=None,
+    contrast_order=None,
+    contrast_labels=None,
+    switch_axis: bool = False,
+    fill_range=None,
+    size_range=None,
+    cmap: str = "RdBu_r",
+    title: Optional[str] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    fill_label: Optional[str] = None,
+    size_label: Optional[str] = None,
+    fig: Optional[go.Figure] = None,
+    width: Optional[int] = None,
+    height: Optional[int] = None,
+) -> go.Figure:
+    dp = preprocess_domino_plot(
+        data, feature, celltype, contrast,
+        features=features, label=label, fill=fill, size=size,
+        feature_order=feature_order, celltype_order=celltype_order,
+        contrast_order=contrast_order, contrast_labels=contrast_labels,
+        switch_axis=switch_axis,
     )
-    if switch_axis:
-        plot_data = switch_axes_domino(plot_data, "plotly")
-        unique_celltypes, gene_list = gene_list, unique_celltypes
 
-    fig = go.Figure()
-    unique_pairs = plot_data[[feature_col, celltype_col]].drop_duplicates()
-    shapes = []
-    for _, row in unique_pairs.iterrows():
-        gi = gene_list.index(row[feature_col]) + 1
-        ci = unique_celltypes.index(row[celltype_col]) + 1
-        y_min, y_max = ci - 0.4, ci + 0.4
-        for idx, contrast in enumerate(contrast_levels):
-            base_x = (gi - 1) * spacing_factor + (1 if contrast == contrast_levels[0] else 2)
-            shapes.append(dict(
-                type="rect", x0=base_x - 0.4, x1=base_x + 0.4, y0=y_min, y1=y_max,
-                line=dict(color="grey", width=0.5), fillcolor="white", opacity=0.5,
-                layer="below",
-            ))
+    owns_figure = fig is None
+    if width is None:
+        width = max(dp.n_features * 120 + 280, 760)
+    if height is None:
+        height = max(dp.n_celltypes * 42 + 180, 460)
+
+    if owns_figure:
+        fig = go.Figure()
+        fig.update_layout(
+            width=width,
+            height=height,
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            title=title,
+            showlegend=False,
+            margin=dict(l=90, r=40, t=60, b=95),
+            xaxis=dict(
+                domain=[0.0, 0.74],
+                range=list(dp.x_range),
+                tickmode="array",
+                tickvals=dp.x_tickvals,
+                ticktext=dp.x_ticktext,
+                tickangle=-45,
+                title_text=xlabel or dp.x_axis_name,
+                showgrid=False,
+                zeroline=False,
+                showline=True,
+                linecolor="#666666",
+            ),
+            yaxis=dict(
+                range=[dp.y_range[1], dp.y_range[0]],
+                tickmode="array",
+                tickvals=dp.y_tickvals,
+                ticktext=dp.y_ticktext,
+                title_text=ylabel or dp.y_axis_name,
+                showgrid=False,
+                zeroline=False,
+                showline=True,
+                linecolor="#666666",
+                scaleanchor="x",
+                scaleratio=1.0,
+            ),
+        )
+
+    _draw_domino_grid(
+        fig, dp,
+        fill_range=fill_range, size_range=size_range, cmap=cmap,
+    )
+
+    if owns_figure:
+        _draw_domino_legend_stack(
+            fig, dp,
+            size_label=size_label or size,
+            fill_label=fill_label or fill,
+            size_range=size_range, fill_range=fill_range,
+            cmap=cmap, width=width, height=height,
+        )
+
+    return fig
+
+
+def _draw_domino_grid(
+    fig: go.Figure,
+    dp: DominoPlotData,
+    *,
+    fill_range,
+    size_range,
+    cmap: str,
+):
+    shapes = list(fig.layout.shapes) if fig.layout.shapes else []
+    for box in dp.boxes:
+        shapes.append(dict(
+            type="rect",
+            x0=box.x0,
+            x1=box.x1,
+            y0=box.y0,
+            y1=box.y1,
+            line=dict(color="#888888", width=0.8),
+            fillcolor="white",
+            layer="below",
+        ))
     fig.update_layout(shapes=shapes)
 
+    points = [point for point in dp.points if point.fill_value is not None or point.size_value is not None]
+    if not points:
+        return
+
+    fmin, fmax = fill_range or dp.fill_extent or (0.0, 1.0)
+    smin, smax = size_range or dp.size_extent or (0.0, 1.0)
+    colorscale = domino_plotly_colorscale(cmap)
+
+    customdata = [
+        [point.feature_value, point.celltype_value, point.contrast_label, point.label_value or ""]
+        for point in points
+    ]
+    hovertemplate = (
+        "<b>%{customdata[0]}</b><br>"
+        "Cell type: %{customdata[1]}<br>"
+        "Contrast: %{customdata[2]}<br>"
+        "Label: %{customdata[3]}<br>"
+        "Fill: %{marker.color:.3f}<br>"
+        "Size: %{marker.size:.2f}<extra></extra>"
+    )
+
     fig.add_trace(go.Scatter(
-        x=plot_data["x_pos"], y=plot_data["y_pos"], mode="markers",
+        x=[point.x for point in points],
+        y=[point.y for point in points],
+        mode="markers",
+        showlegend=False,
+        customdata=customdata,
+        hovertemplate=hovertemplate,
         marker=dict(
-            size=plot_data["size"], color=plot_data["adj_logfc"],
-            colorscale=[[0, logfc_colors["low"]], [0.5, logfc_colors["mid"]], [1, logfc_colors["high"]]],
-            cmin=logfc_limits[0], cmax=logfc_limits[1],
-            colorbar=dict(title=color_scale_name), line=dict(width=1, color="black"),
+            size=[scaled_domino_marker_size(point.size_value, smin, smax) for point in points],
+            color=[point.fill_value if point.fill_value is not None else (fmin + fmax) / 2.0 for point in points],
+            colorscale=colorscale,
+            cmin=fmin,
+            cmax=fmax,
+            line=dict(width=1, color="#111111"),
         ),
-        text=plot_data[var_id], showlegend=False,
     ))
-    fig.update_xaxes(
-        range=[0, len(gene_list) * spacing_factor + 2],
-        tickvals=[(i * spacing_factor) + 1.5 for i in range(len(gene_list))],
-        ticktext=gene_list, showgrid=False,
-        title_text=xlabel or ("Genes" if not switch_axis else "Cell Types"),
-    )
-    fig.update_yaxes(
-        range=[0, len(unique_celltypes) + 1],
-        tickvals=list(range(1, len(unique_celltypes) + 1)),
-        ticktext=unique_celltypes, autorange="reversed", showgrid=False,
-        title_text=ylabel or ("Cell Types" if not switch_axis else "Genes"),
-    )
-    fig.update_layout(plot_bgcolor="white", title=title,
-                      width=base_width * 100, height=base_height * 100)
-    return fig
+
+
+def _draw_domino_legend_stack(
+    fig: go.Figure,
+    dp: DominoPlotData,
+    *,
+    size_label: Optional[str],
+    fill_label: Optional[str],
+    size_range,
+    fill_range,
+    cmap: str,
+    width: float,
+    height: float,
+):
+    lx0, lx1 = 0.78, 0.99
+    cursor = 0.98
+    aspect = width / max(height, 1.0)
+    shapes = list(fig.layout.shapes) if fig.layout.shapes else []
+    annos = list(fig.layout.annotations) if fig.layout.annotations else []
+
+    cursor = _legend_domino_contrasts(shapes, annos, dp.contrast_labels, lx0, lx1, cursor)
+    cursor -= 0.02
+
+    if dp.size_extent is not None and size_label:
+        cursor = _legend_domino_size(
+            shapes, annos, size_label, size_range or dp.size_extent,
+            lx0, lx1, cursor, aspect,
+        )
+        cursor -= 0.02
+
+    fig.update_layout(shapes=shapes, annotations=annos)
+
+    if dp.fill_extent is not None and fill_label:
+        _add_domino_colorbar(fig, fill_label, fill_range or dp.fill_extent, cmap, cursor)
+
+
+def _legend_domino_contrasts(shapes, annos, labels: List[str],
+                             x0: float, x1: float, y_top: float) -> float:
+    box_pad = 0.01
+    title_h = 0.025
+    demo_h = 0.12
+    total_h = title_h + demo_h + 2 * box_pad
+    box_bot = y_top - total_h
+
+    shapes.append(dict(
+        type="rect", xref="paper", yref="paper",
+        x0=x0, x1=x1, y0=box_bot, y1=y_top,
+        fillcolor="#fafafa", line=dict(color="#cccccc", width=0.8),
+    ))
+    annos.append(dict(
+        x=(x0 + x1) / 2, y=y_top - title_h / 2 - box_pad,
+        xref="paper", yref="paper",
+        text="<b>Contrast</b>", showarrow=False, font=dict(size=10),
+        xanchor="center", yanchor="middle",
+    ))
+
+    rect_w = 0.06
+    rect_h = 0.03
+    rect_y0 = box_bot + 0.035
+    rect_positions = [x0 + 0.04, x0 + 0.13]
+    for rect_x0, label in zip(rect_positions, labels):
+        shapes.append(dict(
+            type="rect", xref="paper", yref="paper",
+            x0=rect_x0, x1=rect_x0 + rect_w, y0=rect_y0, y1=rect_y0 + rect_h,
+            fillcolor="white", line=dict(color="#888888", width=0.8),
+        ))
+        annos.append(dict(
+            x=rect_x0 + rect_w / 2, y=rect_y0 + rect_h + 0.02,
+            xref="paper", yref="paper",
+            text=label, showarrow=False, font=dict(size=8),
+            xanchor="center", yanchor="bottom",
+        ))
+    return box_bot
+
+
+def _legend_domino_size(shapes, annos, title: str, srange,
+                        x0: float, x1: float, y_top: float, aspect: float) -> float:
+    smin, smax = srange
+    levels = [smin] if smax <= smin else [smin, (smin + smax) / 2.0, smax]
+    box_pad = 0.01
+    title_h = 0.025
+    row_h = 0.04
+    total_h = title_h + len(levels) * row_h + 2 * box_pad
+    box_bot = y_top - total_h
+
+    shapes.append(dict(
+        type="rect", xref="paper", yref="paper",
+        x0=x0, x1=x1, y0=box_bot, y1=y_top,
+        fillcolor="#fafafa", line=dict(color="#cccccc", width=0.8),
+    ))
+    annos.append(dict(
+        x=(x0 + x1) / 2, y=y_top - title_h / 2 - box_pad,
+        xref="paper", yref="paper",
+        text=f"<b>{title}</b>", showarrow=False, font=dict(size=10),
+        xanchor="center", yanchor="middle",
+    ))
+
+    for i, level in enumerate(levels):
+        size = scaled_domino_marker_size(level, smin, smax)
+        r_x = 0.005 + (size / 24.0) * 0.01
+        r_y = r_x * aspect
+        ry = y_top - title_h - box_pad - (i + 0.5) * row_h
+        shapes.append(dict(
+            type="circle", xref="paper", yref="paper",
+            x0=x0 + 0.045 - r_x, x1=x0 + 0.045 + r_x,
+            y0=ry - r_y, y1=ry + r_y,
+            fillcolor="#444444", line=dict(color="#444444", width=0),
+        ))
+        annos.append(dict(
+            x=x0 + 0.085, y=ry, xref="paper", yref="paper",
+            text=f"{level:.2f}", showarrow=False, font=dict(size=8),
+            xanchor="left", yanchor="middle",
+        ))
+    return box_bot
+
+
+def _add_domino_colorbar(fig: go.Figure, title: str, frange, cmap: str, cursor: float):
+    fmin, fmax = frange
+    fig.add_trace(go.Scatter(
+        x=[None], y=[None], mode="markers", showlegend=False,
+        marker=dict(
+            colorscale=domino_plotly_colorscale(cmap),
+            cmin=fmin,
+            cmax=fmax,
+            color=[fmin],
+            colorbar=dict(
+                title=dict(text=title, side="right", font=dict(size=10)),
+                x=0.90,
+                xanchor="left",
+                y=cursor - 0.10,
+                yanchor="middle",
+                len=max(0.15, min(0.28, cursor - 0.08)),
+                thickness=12,
+                tickfont=dict(size=8),
+            ),
+        ),
+    ))
 
 
 def save_plot(fig, plot_path, output_str, formats):
