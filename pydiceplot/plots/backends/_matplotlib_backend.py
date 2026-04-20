@@ -9,6 +9,7 @@ layout, so a second axes would fight with their figure.
 from __future__ import annotations
 
 import os
+from types import SimpleNamespace
 from typing import Optional, Tuple, Union
 
 import matplotlib
@@ -579,40 +580,8 @@ def _draw_domino_legend_stack(
 
 
 def _legend_domino_contrasts(lax: plt.Axes, labels: List[str], y_top: float) -> float:
-    x0, x1 = 0.05, 0.95
-    box_pad = 0.02
-    title_h = 0.03
-    demo_h = 0.13
-    total_h = title_h + demo_h + 2 * box_pad
-    box_bot = y_top - total_h
-
-    lax.add_patch(patches.Rectangle(
-        (x0, box_bot), x1 - x0, total_h,
-        facecolor="#fafafa", edgecolor="#cccccc", linewidth=0.6,
-        transform=lax.transAxes, clip_on=False,
-    ))
-    lax.text(
-        (x0 + x1) / 2, y_top - title_h / 2 - box_pad / 2,
-        "Contrast", ha="center", va="center", fontweight="bold", fontsize=10,
-        transform=lax.transAxes,
-    )
-
-    box_y = box_bot + box_pad + 0.05
-    rect_w = 0.18
-    rect_h = 0.04
-    rect_xs = [0.18, 0.58]
-    for rect_x, label in zip(rect_xs, labels):
-        lax.add_patch(patches.Rectangle(
-            (rect_x, box_y), rect_w, rect_h,
-            facecolor="white", edgecolor="#888888", linewidth=0.8,
-            transform=lax.transAxes, clip_on=False,
-        ))
-        lax.text(
-            rect_x + rect_w / 2, box_y + rect_h + 0.02,
-            label, ha="center", va="bottom", fontsize=8,
-            transform=lax.transAxes,
-        )
-    return box_bot
+    legend_dp = SimpleNamespace(npips=len(labels), pip_labels=list(labels))
+    return _legend_position(lax, legend_dp, "Contrast", y_top)
 
 
 def _legend_domino_size(lax: plt.Axes, title: str, srange, y_top: float) -> float:

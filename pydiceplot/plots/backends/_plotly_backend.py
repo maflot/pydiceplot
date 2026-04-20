@@ -8,6 +8,7 @@ When `fig=` is supplied we add shapes/traces to it and skip the legend stack
 from __future__ import annotations
 
 import os
+from types import SimpleNamespace
 from typing import List, Optional
 
 import matplotlib
@@ -638,7 +639,9 @@ def _draw_domino_legend_stack(
     shapes = list(fig.layout.shapes) if fig.layout.shapes else []
     annos = list(fig.layout.annotations) if fig.layout.annotations else []
 
-    cursor = _legend_domino_contrasts(shapes, annos, dp.contrast_labels, lx0, lx1, cursor)
+    cursor = _legend_domino_contrasts(
+        shapes, annos, dp.contrast_labels, lx0, lx1, cursor, aspect
+    )
     cursor -= 0.02
 
     if dp.size_extent is not None and size_label:
@@ -655,42 +658,9 @@ def _draw_domino_legend_stack(
 
 
 def _legend_domino_contrasts(shapes, annos, labels: List[str],
-                             x0: float, x1: float, y_top: float) -> float:
-    box_pad = 0.01
-    title_h = 0.025
-    demo_h = 0.12
-    total_h = title_h + demo_h + 2 * box_pad
-    box_bot = y_top - total_h
-
-    shapes.append(dict(
-        type="rect", xref="paper", yref="paper",
-        x0=x0, x1=x1, y0=box_bot, y1=y_top,
-        fillcolor="#fafafa", line=dict(color="#cccccc", width=0.8),
-    ))
-    annos.append(dict(
-        x=(x0 + x1) / 2, y=y_top - title_h / 2 - box_pad,
-        xref="paper", yref="paper",
-        text="<b>Contrast</b>", showarrow=False, font=dict(size=10),
-        xanchor="center", yanchor="middle",
-    ))
-
-    rect_w = 0.06
-    rect_h = 0.03
-    rect_y0 = box_bot + 0.035
-    rect_positions = [x0 + 0.04, x0 + 0.13]
-    for rect_x0, label in zip(rect_positions, labels):
-        shapes.append(dict(
-            type="rect", xref="paper", yref="paper",
-            x0=rect_x0, x1=rect_x0 + rect_w, y0=rect_y0, y1=rect_y0 + rect_h,
-            fillcolor="white", line=dict(color="#888888", width=0.8),
-        ))
-        annos.append(dict(
-            x=rect_x0 + rect_w / 2, y=rect_y0 + rect_h + 0.02,
-            xref="paper", yref="paper",
-            text=label, showarrow=False, font=dict(size=8),
-            xanchor="center", yanchor="bottom",
-        ))
-    return box_bot
+                             x0: float, x1: float, y_top: float, aspect: float) -> float:
+    legend_dp = SimpleNamespace(npips=len(labels), pip_labels=list(labels))
+    return _legend_position(shapes, annos, legend_dp, "Contrast", x0, x1, y_top, aspect)
 
 
 def _legend_domino_size(shapes, annos, title: str, srange,

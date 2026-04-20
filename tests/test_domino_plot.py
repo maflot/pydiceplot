@@ -93,6 +93,30 @@ def test_matplotlib_domino_returns_fig_ax():
     plt.close(fig)
 
 
+def test_matplotlib_domino_legend_has_position_dots_and_labels():
+    pydiceplot.set_backend("matplotlib")
+    data = get_domino_example_data()
+    fig, _ = domino_plot(
+        data,
+        "gene", "Cell_Type", "Group",
+        fill="logFC",
+        size="neg_log10_adj_p",
+        contrast_order=["Type1", "Type2"],
+        contrast_labels=["Type 1", "Type 2"],
+        fill_label="Log2FC",
+        size_label="-log10(adj p)",
+    )
+    legend_ax = fig.axes[1]
+    texts = [text.get_text() for text in legend_ax.texts]
+    assert "Contrast" in texts
+    assert "Type 1" in texts
+    assert "Type 2" in texts
+    assert len(legend_ax.collections) >= 2
+    assert len(legend_ax.collections[0].get_offsets()) == 2
+    assert len(legend_ax.lines) >= 4
+    plt.close(fig)
+
+
 def test_matplotlib_domino_with_existing_ax_returns_ax():
     pydiceplot.set_backend("matplotlib")
     data = get_domino_example_data()
@@ -142,6 +166,37 @@ def test_plotly_domino_returns_figure():
     assert isinstance(fig, go.Figure)
     assert len(fig.layout.shapes) > 0
     assert any(trace.type == "scatter" for trace in fig.data)
+
+
+def test_plotly_domino_legend_has_position_dots_and_labels():
+    pydiceplot.set_backend("plotly")
+    data = get_domino_example_data()
+    fig = domino_plot(
+        data,
+        "gene", "Cell_Type", "Group",
+        fill="logFC",
+        size="neg_log10_adj_p",
+        contrast_order=["Type1", "Type2"],
+        contrast_labels=["Type 1", "Type 2"],
+        fill_label="Log2FC",
+        size_label="-log10(adj p)",
+    )
+    annotations = [annotation.text for annotation in fig.layout.annotations]
+    assert "<b>Contrast</b>" in annotations
+    assert "Type 1" in annotations
+    assert "Type 2" in annotations
+    top_legend_circles = [
+        shape for shape in fig.layout.shapes
+        if shape.type == "circle" and shape.xref == "paper" and shape.yref == "paper"
+        and float(shape.y0) > 0.75
+    ]
+    assert len(top_legend_circles) == 2
+    top_legend_lines = [
+        shape for shape in fig.layout.shapes
+        if shape.type == "line" and shape.xref == "paper" and shape.yref == "paper"
+        and float(shape.y0) > 0.70 and float(shape.y1) > 0.70
+    ]
+    assert len(top_legend_lines) >= 4
 
 
 def test_plotly_domino_with_existing_fig_reuses_figure():
