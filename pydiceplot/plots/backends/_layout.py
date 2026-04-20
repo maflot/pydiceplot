@@ -82,7 +82,7 @@ class DiceLayout:
     n_x: int
     n_y: int
     cell_sq: float          # square cell side (unit of the category grid)
-    tile_sq: float          # square tile inside a cell (tile = cell * min(cw, ch))
+    tile_sq: float          # square tile inside a cell (tile = cell * tile_frac)
     sub: float              # pip sub-cell side (tile_sq / 3)
     grid_x0: float          # x of left grid edge
     grid_y0: float          # y of top grid edge
@@ -91,8 +91,7 @@ class DiceLayout:
     base_pip_r: float       # max pip radius (sub/2 * pip_scale)
     pip_scale: float
     npips: int
-    cell_width: float
-    cell_height: float
+    tile_frac: float
 
     def tile_center(self, xi: int, yi: int) -> Tuple[float, float]:
         cx = self.grid_x0 + (xi + 0.5) * self.cell_sq
@@ -122,25 +121,27 @@ def compute_dice_layout(
     plot_height: float,
     plot_x0: float = 0.0,
     plot_y0: float = 0.0,
-    cell_width: float = 0.8,
-    cell_height: float = 0.8,
+    tile_frac: float = 0.85,
     pip_scale: float = 0.85,
     npips: int = 1,
 ) -> DiceLayout:
     """Compute a centred square-cell dice layout, mirroring kuva::add_diceplot.
 
     Picks `cell_sq = min(plot_w/n_x, plot_h/n_y)` so both axes use the same
-    cell size, then centres the grid within the plot area.
+    cell size, then centres the grid within the plot area. `tile_frac` is the
+    side of the visible tile as a fraction of the cell.
     """
     if n_x <= 0 or n_y <= 0:
         raise ValueError(f"n_x and n_y must be positive, got ({n_x}, {n_y})")
     if npips < 1 or npips > 9:
         raise ValueError(f"npips must be in 1..9, got {npips}")
+    if not (0.0 < tile_frac <= 1.0):
+        raise ValueError(f"tile_frac must be in (0, 1], got {tile_frac}")
 
     cw = plot_width / n_x
     ch = plot_height / n_y
     cell_sq = min(cw, ch)
-    tile_sq = cell_sq * min(cell_width, cell_height)
+    tile_sq = cell_sq * tile_frac
 
     grid_w = n_x * cell_sq
     grid_h = n_y * cell_sq
@@ -163,8 +164,7 @@ def compute_dice_layout(
         base_pip_r=base_pip_r,
         pip_scale=pip_scale,
         npips=npips,
-        cell_width=cell_width,
-        cell_height=cell_height,
+        tile_frac=tile_frac,
     )
 
 

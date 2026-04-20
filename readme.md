@@ -216,9 +216,7 @@ dice_plot(
     # ordering
     x_order=None, y_order=None, pips_order=None,
     # dice geometry
-    npips=None, pip_scale=0.85,
-    tile_width=0.85, tile_height=0.85,
-    grid_lines=False,
+    pip_scale=0.85, tile_size=0.85, grid_lines=False,
     # colour scales
     fill_range=None, size_range=None, cmap="viridis",
     # labels

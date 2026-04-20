@@ -111,7 +111,7 @@ def run(out_dir: str = "images") -> None:
         pips_label="pathway",
         cmap="ggdiceplot_pg",
         pip_scale=0.95,
-        tile_width=0.92, tile_height=0.92,
+        tile_size=0.92,
         figsize=(13, 10),
     )
     os.makedirs(out_dir, exist_ok=True)

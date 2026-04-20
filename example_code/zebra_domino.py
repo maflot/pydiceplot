@@ -51,7 +51,7 @@ def run(out_dir: str = "images") -> None:
         size_label="-log10(FDR)",
         pips_label="contrast",
         cmap="ggdiceplot_pg",
-        tile_width=0.9, tile_height=0.9,
+        tile_size=0.9,
         figsize=(12, 14),
     )
     os.makedirs(out_dir, exist_ok=True)

@@ -213,3 +213,126 @@ def test_plotly_rejects_matplotlib_kwargs():
     with pytest.raises(TypeError, match="matplotlib"):
         dice_plot(data, "CellType", "Pathway", "PathologyVariable",
                   pip_colors=colors, figsize=(8, 8))
+
+
+def test_plotly_composition_on_fresh_fig_sets_axes_and_uses_full_domain():
+    """fig=go.Figure() must get a usable layout: category ticks, reversed y,
+    locked aspect, and a full [0,1] x-domain (no reserved legend strip)."""
+    import plotly.graph_objects as go
+    pydiceplot.set_backend("plotly")
+    data = get_diceplot_example_data(4)
+    colors = dict(list(get_example_cat_c_colors().items())[:4])
+    user_fig = go.Figure()
+    result = dice_plot(
+        data, x="CellType", y="Pathway", pips="PathologyVariable",
+        pip_colors=colors, fig=user_fig,
+    )
+    assert result is user_fig
+    xaxis = result.layout.xaxis
+    yaxis = result.layout.yaxis
+    n_x = 5   # CellType categories
+    n_y = 15  # Pathway categories
+    assert list(xaxis.range) == [0.5, n_x + 0.5]
+    assert list(yaxis.range) == [n_y + 0.5, 0.5]  # reversed
+    assert yaxis.scaleanchor == "x"
+    assert yaxis.scaleratio == 1.0
+    assert list(xaxis.tickvals) == list(range(1, n_x + 1))
+    assert tuple(xaxis.ticktext) == tuple(["Astrocyte", "Endothelial", "Microglia",
+                                            "Neuron", "Oligodendrocyte"])
+    # No legend strip reserved when composing
+    assert list(xaxis.domain) == [0.0, 1.0]
+    assert len(result.layout.shapes) > 0
+
+
+def test_plotly_owns_figure_reserves_legend_domain():
+    import plotly.graph_objects as go
+    pydiceplot.set_backend("plotly")
+    data = get_diceplot_example_data(3)
+    colors = dict(list(get_example_cat_c_colors().items())[:3])
+    fig = dice_plot(
+        data, x="CellType", y="Pathway", pips="PathologyVariable",
+        pip_colors=colors,
+    )
+    assert isinstance(fig, go.Figure)
+    assert list(fig.layout.xaxis.domain) == [0.0, 0.72]
+
+
+def test_plotly_categorical_pip_radius_matches_base_pip_r():
+    """Regression: base_pip_r already folds pip_scale — the backend must not
+    multiply by pip_scale a second time."""
+    import plotly.graph_objects as go
+    from pydiceplot.plots.backends._layout import compute_dice_layout
+
+    pydiceplot.set_backend("plotly")
+    data = get_diceplot_example_data(4)
+    colors = dict(list(get_example_cat_c_colors().items())[:4])
+    pip_scale = 0.7
+    tile_size = 0.9
+    fig = dice_plot(
+        data, x="CellType", y="Pathway", pips="PathologyVariable",
+        pip_colors=colors, pip_scale=pip_scale, tile_size=tile_size,
+    )
+    # Reproduce the layout the backend built
+    n_x = 5
+    n_y = 15
+    layout = compute_dice_layout(
+        n_x=n_x, n_y=n_y,
+        plot_width=float(n_x), plot_height=float(n_y),
+        plot_x0=0.5, plot_y0=0.5,
+        tile_frac=tile_size, pip_scale=pip_scale, npips=4,
+    )
+    expected_r = layout.base_pip_r
+    pip_circles = [s for s in fig.layout.shapes
+                   if s.type == "circle" and getattr(s, "xref", None) is None]
+    assert pip_circles, "expected at least one pip circle"
+    sample = pip_circles[0]
+    actual_r = (sample.x1 - sample.x0) / 2.0
+    assert actual_r == pytest.approx(expected_r, rel=1e-9)
+
+
+def test_matplotlib_categorical_pip_radius_matches_base_pip_r():
+    import matplotlib
+    from pydiceplot.plots.backends._layout import compute_dice_layout
+
+    pydiceplot.set_backend("matplotlib")
+    data = get_diceplot_example_data(4)
+    colors = dict(list(get_example_cat_c_colors().items())[:4])
+    pip_scale = 0.6
+    tile_size = 0.85
+    fig, ax = dice_plot(
+        data, x="CellType", y="Pathway", pips="PathologyVariable",
+        pip_colors=colors, pip_scale=pip_scale, tile_size=tile_size,
+    )
+    layout = compute_dice_layout(
+        n_x=5, n_y=15,
+        plot_width=5.0, plot_height=15.0,
+        plot_x0=0.5, plot_y0=0.5,
+        tile_frac=tile_size, pip_scale=pip_scale, npips=4,
+    )
+    expected_r = layout.base_pip_r
+    circles = [p for p in ax.patches
+               if isinstance(p, matplotlib.patches.Circle)]
+    assert circles, "expected at least one pip circle"
+    assert circles[0].radius == pytest.approx(expected_r, rel=1e-9)
+    plt.close(fig)
+
+
+def test_dice_plot_does_not_accept_npips():
+    pydiceplot.set_backend("matplotlib")
+    data = get_diceplot_example_data(3)
+    colors = dict(list(get_example_cat_c_colors().items())[:3])
+    with pytest.raises(TypeError):
+        dice_plot(data, "CellType", "Pathway", "PathologyVariable",
+                  pip_colors=colors, npips=3)
+
+
+def test_dice_plot_does_not_accept_tile_width_or_tile_height():
+    pydiceplot.set_backend("matplotlib")
+    data = get_diceplot_example_data(3)
+    colors = dict(list(get_example_cat_c_colors().items())[:3])
+    with pytest.raises(TypeError):
+        dice_plot(data, "CellType", "Pathway", "PathologyVariable",
+                  pip_colors=colors, tile_width=0.9)
+    with pytest.raises(TypeError):
+        dice_plot(data, "CellType", "Pathway", "PathologyVariable",
+                  pip_colors=colors, tile_height=0.9)

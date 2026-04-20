@@ -86,7 +86,7 @@ def test_compute_dice_layout_centres_square_grid():
     lay = compute_dice_layout(
         n_x=4, n_y=2,
         plot_width=100.0, plot_height=100.0,
-        cell_width=0.8, cell_height=0.8, npips=4,
+        tile_frac=0.8, npips=4,
     )
     # Square cell = min(100/4, 100/2) = 25
     assert lay.cell_sq == pytest.approx(25.0)
@@ -104,12 +104,18 @@ def test_compute_dice_layout_rejects_bad_inputs():
         compute_dice_layout(n_x=0, n_y=2, plot_width=100, plot_height=100, npips=4)
     with pytest.raises(ValueError):
         compute_dice_layout(n_x=2, n_y=2, plot_width=100, plot_height=100, npips=10)
+    with pytest.raises(ValueError):
+        compute_dice_layout(n_x=2, n_y=2, plot_width=100, plot_height=100,
+                            npips=4, tile_frac=0.0)
+    with pytest.raises(ValueError):
+        compute_dice_layout(n_x=2, n_y=2, plot_width=100, plot_height=100,
+                            npips=4, tile_frac=1.5)
 
 
 def test_scaled_pip_radius_clamps_and_maps():
     lay = compute_dice_layout(
         n_x=2, n_y=2, plot_width=60, plot_height=60,
-        cell_width=0.8, cell_height=0.8, npips=4,
+        tile_frac=0.8, npips=4,
     )
     base = lay.base_pip_r
     # None → min_fill (0.25)

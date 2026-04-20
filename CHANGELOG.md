@@ -46,8 +46,7 @@ API refactor to match the new 1.0 conventions.
 - **Domino preprocessing rewrite.** Domino plots now validate their structural
   columns up front, enforce exactly two contrast slots, compute shared backend
   geometry once, and use the same color/size range semantics as `dice_plot`.
-- **Tile geometry controls.** `tile_width`, `tile_height`, `pip_scale`,
-  `grid_lines` parameters.
+- **Tile geometry controls.** `tile_size`, `pip_scale`, `grid_lines` parameters.
 - **Label controls.** `fill_label`, `size_label`, `pips_label` set legend
   titles; `xlabel`, `ylabel`, `title` set axis / figure titles.
 - **pixi environment.** `pixi.toml` with `test`, `example`, `build`, `check`

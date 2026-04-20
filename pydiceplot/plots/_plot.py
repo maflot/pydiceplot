@@ -39,10 +39,8 @@ def dice_plot(
     y_order=None,
     pips_order=None,
     # dice geometry
-    npips: Optional[int] = None,
     pip_scale: float = 0.85,
-    tile_width: float = 0.85,
-    tile_height: float = 0.85,
+    tile_size: float = 0.85,
     grid_lines: bool = False,
     # color scales
     fill_range=None,
@@ -86,12 +84,10 @@ def dice_plot(
         Numeric column name for per-pip size.
     x_order, y_order, pips_order : sequence, optional
         Explicit category orderings. Default: sorted unique.
-    npips : int, optional
-        Force a specific pip count (1..9). Default: `len(unique(pips))`.
     pip_scale : float
         Fraction of the sub-cell the pip radius can fill. Default 0.85.
-    tile_width, tile_height : float
-        Tile size as a fraction of the cell. Default 0.85.
+    tile_size : float
+        Tile side as a fraction of the cell. Default 0.85.
     grid_lines : bool
         Draw a faint 3×3 sub-grid inside each tile.
     fill_range, size_range : tuple, optional
@@ -122,8 +118,7 @@ def dice_plot(
     kwargs = dict(
         pip_colors=pip_colors, fill=fill, fill_palette=fill_palette, size=size,
         x_order=x_order, y_order=y_order, pips_order=pips_order,
-        npips=npips, pip_scale=pip_scale,
-        tile_width=tile_width, tile_height=tile_height, grid_lines=grid_lines,
+        pip_scale=pip_scale, tile_size=tile_size, grid_lines=grid_lines,
         fill_range=fill_range, size_range=size_range, cmap=cmap,
         title=title, xlabel=xlabel, ylabel=ylabel,
         fill_label=fill_label, size_label=size_label, pips_label=pips_label,

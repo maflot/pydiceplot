@@ -217,6 +217,74 @@ def test_plotly_domino_with_existing_fig_reuses_figure():
     assert len(result.data) == 1
 
 
+def test_plotly_domino_composition_on_fresh_fig_sets_axes_and_uses_full_domain():
+    """Regression: a caller-supplied blank Figure must receive category
+    ticks, a reversed y-axis, locked aspect, and a full-width x-domain."""
+    import plotly.graph_objects as go
+
+    pydiceplot.set_backend("plotly")
+    data = get_domino_example_data()
+    user_fig = go.Figure()
+    result = domino_plot(
+        data,
+        "gene", "Cell_Type", "Group",
+        fill="logFC",
+        size="neg_log10_adj_p",
+        contrast_order=["Type1", "Type2"],
+        fig=user_fig,
+    )
+    xaxis = result.layout.xaxis
+    yaxis = result.layout.yaxis
+    assert xaxis.range is not None and len(xaxis.range) == 2
+    # y-axis reversed: first value > second
+    assert yaxis.range[0] > yaxis.range[1]
+    assert yaxis.scaleanchor == "x"
+    assert yaxis.scaleratio == 1.0
+    # No reserved legend strip when composing
+    assert list(xaxis.domain) == [0.0, 1.0]
+    assert xaxis.tickvals is not None
+    assert xaxis.ticktext is not None
+    # Rectangles for every (feature, celltype, contrast) combination must be present
+    assert len(result.layout.shapes) > 0
+
+
+def test_plotly_domino_owns_figure_reserves_legend_domain():
+    pydiceplot.set_backend("plotly")
+    data = get_domino_example_data()
+    fig = domino_plot(
+        data,
+        "gene", "Cell_Type", "Group",
+        fill="logFC",
+        size="neg_log10_adj_p",
+        contrast_order=["Type1", "Type2"],
+    )
+    assert list(fig.layout.xaxis.domain) == [0.0, 0.74]
+
+
+def test_plotly_domino_hover_uses_raw_size_from_customdata():
+    """Regression: hover must report the underlying size value, not the
+    scaled marker diameter."""
+    pydiceplot.set_backend("plotly")
+    data = get_domino_example_data()
+    fig = domino_plot(
+        data,
+        "gene", "Cell_Type", "Group",
+        fill="logFC",
+        size="neg_log10_adj_p",
+        contrast_order=["Type1", "Type2"],
+    )
+    scatter = next(trace for trace in fig.data if trace.type == "scatter"
+                   and trace.mode == "markers" and trace.customdata is not None)
+    assert "%{customdata[4]" in scatter.hovertemplate
+    assert "%{marker.size" not in scatter.hovertemplate
+    # customdata rows: [feature, celltype, contrast_label, label, size_value]
+    row = scatter.customdata[0]
+    assert len(row) == 5
+    # fifth entry should be a raw numeric size (not a display diameter in 10..24 range)
+    raw_size = row[4]
+    assert raw_size is None or isinstance(raw_size, (int, float))
+
+
 def test_plotly_domino_rejects_matplotlib_kwargs():
     pydiceplot.set_backend("plotly")
     data = get_domino_example_data()

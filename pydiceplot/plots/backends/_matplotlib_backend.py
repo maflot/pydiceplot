@@ -47,10 +47,8 @@ def plot_dice(
     y_order=None,
     pips_order=None,
     # dice geometry
-    npips: Optional[int] = None,
     pip_scale: float = 0.85,
-    tile_width: float = 0.85,
-    tile_height: float = 0.85,
+    tile_size: float = 0.85,
     grid_lines: bool = False,
     # colour scales
     fill_range=None,
@@ -79,8 +77,6 @@ def plot_dice(
         x_order=x_order, y_order=y_order, pips_order=pips_order,
         max_pips=max_pips,
     )
-    if npips is not None:
-        dp.npips = npips
 
     owns_figure = ax is None
     if owns_figure:
@@ -99,7 +95,7 @@ def plot_dice(
 
     _draw_dice_grid(
         ax, dp,
-        pip_scale=pip_scale, tile_width=tile_width, tile_height=tile_height,
+        pip_scale=pip_scale, tile_size=tile_size,
         grid_lines=grid_lines, fill_range=fill_range, size_range=size_range,
         cmap=cmap,
     )
@@ -134,7 +130,7 @@ def plot_dice(
 
 def _draw_dice_grid(
     ax: plt.Axes, dp: DicePlotData, *,
-    pip_scale: float, tile_width: float, tile_height: float,
+    pip_scale: float, tile_size: float,
     grid_lines: bool, fill_range, size_range, cmap: str,
 ):
     n_x, n_y = dp.n_x, dp.n_y
@@ -148,7 +144,7 @@ def _draw_dice_grid(
         n_x=n_x, n_y=n_y,
         plot_width=float(n_x), plot_height=float(n_y),
         plot_x0=0.5, plot_y0=0.5,
-        cell_width=tile_width, cell_height=tile_height,
+        tile_frac=tile_size,
         pip_scale=pip_scale, npips=max(dp.npips, 1),
     )
 
@@ -200,7 +196,7 @@ def _draw_dice_grid(
                 color = pt.pip_colors[k] if k < len(pt.pip_colors) else None
                 if color is None:
                     continue
-                r = layout.base_pip_r * pip_scale
+                r = layout.base_pip_r
                 ax.add_patch(patches.Circle((px, py), r, facecolor=color, edgecolor="none", zorder=3))
             else:  # per_dot
                 fv = pt.pip_fills[k] if k < len(pt.pip_fills) else None

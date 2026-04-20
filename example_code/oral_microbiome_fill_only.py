@@ -33,7 +33,7 @@ def run(out_dir: str = "images") -> None:
         pips_label="disease",
         cmap="ggdiceplot_pg",
         pip_scale=1.0,
-        tile_width=0.9, tile_height=0.9,
+        tile_size=0.9,
         figsize=(10, 10),
     )
     os.makedirs(out_dir, exist_ok=True)

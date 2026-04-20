@@ -44,10 +44,8 @@ def plot_dice(
     y_order=None,
     pips_order=None,
     # dice geometry
-    npips: Optional[int] = None,
     pip_scale: float = 0.85,
-    tile_width: float = 0.85,
-    tile_height: float = 0.85,
+    tile_size: float = 0.85,
     grid_lines: bool = False,
     # colour scales
     fill_range=None,
@@ -72,8 +70,6 @@ def plot_dice(
         x_order=x_order, y_order=y_order, pips_order=pips_order,
         max_pips=max_pips,
     )
-    if npips is not None:
-        dp.npips = npips
 
     owns_figure = fig is None
     n_x, n_y = dp.n_x, dp.n_y
@@ -89,32 +85,38 @@ def plot_dice(
             plot_bgcolor="white", paper_bgcolor="white",
             title=title, showlegend=False,
             margin=dict(l=80, r=40, t=60, b=80),
-            xaxis=dict(
-                domain=[0.0, 0.72],
-                range=[0.5, n_x + 0.5],
-                tickmode="array",
-                tickvals=list(range(1, n_x + 1)),
-                ticktext=dp.x_categories,
-                tickangle=-45,
-                title_text=xlabel or x,
-                showgrid=False, zeroline=False, mirror=False,
-                showline=True, linecolor="#666666",
-            ),
-            yaxis=dict(
-                range=[n_y + 0.5, 0.5],
-                tickmode="array",
-                tickvals=list(range(1, n_y + 1)),
-                ticktext=dp.y_categories,
-                title_text=ylabel or y,
-                showgrid=False, zeroline=False, mirror=False,
-                showline=True, linecolor="#666666",
-                scaleanchor="x", scaleratio=1.0,
-            ),
         )
+
+    # Axis setup applies on both branches: a caller composing onto their own
+    # figure still needs a usable category grid, reversed y-axis, and locked
+    # aspect ratio. Only the legend-reserved x-domain is owns-figure-only.
+    fig.update_layout(
+        xaxis=dict(
+            domain=[0.0, 0.72] if owns_figure else [0.0, 1.0],
+            range=[0.5, n_x + 0.5],
+            tickmode="array",
+            tickvals=list(range(1, n_x + 1)),
+            ticktext=dp.x_categories,
+            tickangle=-45,
+            title_text=xlabel or x,
+            showgrid=False, zeroline=False, mirror=False,
+            showline=True, linecolor="#666666",
+        ),
+        yaxis=dict(
+            range=[n_y + 0.5, 0.5],
+            tickmode="array",
+            tickvals=list(range(1, n_y + 1)),
+            ticktext=dp.y_categories,
+            title_text=ylabel or y,
+            showgrid=False, zeroline=False, mirror=False,
+            showline=True, linecolor="#666666",
+            scaleanchor="x", scaleratio=1.0,
+        ),
+    )
 
     _draw_dice_grid(
         fig, dp,
-        pip_scale=pip_scale, tile_width=tile_width, tile_height=tile_height,
+        pip_scale=pip_scale, tile_size=tile_size,
         grid_lines=grid_lines, fill_range=fill_range, size_range=size_range,
         cmap=cmap,
     )
@@ -144,7 +146,7 @@ def _norm(v, vmin, vmax):
 
 def _draw_dice_grid(
     fig: go.Figure, dp: DicePlotData, *,
-    pip_scale: float, tile_width: float, tile_height: float,
+    pip_scale: float, tile_size: float,
     grid_lines: bool, fill_range, size_range, cmap: str,
 ):
     n_x, n_y = dp.n_x, dp.n_y
@@ -152,7 +154,7 @@ def _draw_dice_grid(
         n_x=n_x, n_y=n_y,
         plot_width=float(n_x), plot_height=float(n_y),
         plot_x0=0.5, plot_y0=0.5,
-        cell_width=tile_width, cell_height=tile_height,
+        tile_frac=tile_size,
         pip_scale=pip_scale, npips=max(dp.npips, 1),
     )
 
@@ -204,7 +206,7 @@ def _draw_dice_grid(
                 color = pt.pip_colors[k] if k < len(pt.pip_colors) else None
                 if color is None:
                     continue
-                r = layout.base_pip_r * pip_scale
+                r = layout.base_pip_r
                 shapes.append(dict(
                     type="circle",
                     x0=px - r, x1=px + r, y0=py - r, y1=py + r,
@@ -515,33 +517,38 @@ def plot_domino(
             title=title,
             showlegend=False,
             margin=dict(l=90, r=40, t=60, b=95),
-            xaxis=dict(
-                domain=[0.0, 0.74],
-                range=list(dp.x_range),
-                tickmode="array",
-                tickvals=dp.x_tickvals,
-                ticktext=dp.x_ticktext,
-                tickangle=-45,
-                title_text=xlabel or dp.x_axis_name,
-                showgrid=False,
-                zeroline=False,
-                showline=True,
-                linecolor="#666666",
-            ),
-            yaxis=dict(
-                range=[dp.y_range[1], dp.y_range[0]],
-                tickmode="array",
-                tickvals=dp.y_tickvals,
-                ticktext=dp.y_ticktext,
-                title_text=ylabel or dp.y_axis_name,
-                showgrid=False,
-                zeroline=False,
-                showline=True,
-                linecolor="#666666",
-                scaleanchor="x",
-                scaleratio=1.0,
-            ),
         )
+
+    # Axis setup must run on both branches — without it, a caller-supplied
+    # fresh figure has no category axes, no reversed y, and no locked aspect.
+    fig.update_layout(
+        xaxis=dict(
+            domain=[0.0, 0.74] if owns_figure else [0.0, 1.0],
+            range=list(dp.x_range),
+            tickmode="array",
+            tickvals=dp.x_tickvals,
+            ticktext=dp.x_ticktext,
+            tickangle=-45,
+            title_text=xlabel or dp.x_axis_name,
+            showgrid=False,
+            zeroline=False,
+            showline=True,
+            linecolor="#666666",
+        ),
+        yaxis=dict(
+            range=[dp.y_range[1], dp.y_range[0]],
+            tickmode="array",
+            tickvals=dp.y_tickvals,
+            ticktext=dp.y_ticktext,
+            title_text=ylabel or dp.y_axis_name,
+            showgrid=False,
+            zeroline=False,
+            showline=True,
+            linecolor="#666666",
+            scaleanchor="x",
+            scaleratio=1.0,
+        ),
+    )
 
     _draw_domino_grid(
         fig, dp,
@@ -591,7 +598,13 @@ def _draw_domino_grid(
     colorscale = domino_plotly_colorscale(cmap)
 
     customdata = [
-        [point.feature_value, point.celltype_value, point.contrast_label, point.label_value or ""]
+        [
+            point.feature_value,
+            point.celltype_value,
+            point.contrast_label,
+            point.label_value or "",
+            point.size_value if point.size_value is not None else float("nan"),
+        ]
         for point in points
     ]
     hovertemplate = (
@@ -600,7 +613,7 @@ def _draw_domino_grid(
         "Contrast: %{customdata[2]}<br>"
         "Label: %{customdata[3]}<br>"
         "Fill: %{marker.color:.3f}<br>"
-        "Size: %{marker.size:.2f}<extra></extra>"
+        "Size: %{customdata[4]:.3f}<extra></extra>"
     )
 
     fig.add_trace(go.Scatter(
